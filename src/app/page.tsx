@@ -2036,8 +2036,6 @@ function CalculatorSection() {
   const prop = PROPERTIES.find((p) => p.id === effectivePropId);
   const dpNum = parseInt(dp);
   const tenorNum = parseInt(tenor);
-  const dpAmount = prop ? prop.price * dpNum / 100 : 0;
-  const remaining = prop ? prop.price - dpAmount : 0;
 
   // Available financing types for this property
   const finTypes = prop?.financingTypes ?? ["syariah", "kpr"];
@@ -2046,8 +2044,13 @@ function CalculatorSection() {
 
   // Effective fin type: only show what's available
   const effectiveFinType = !hasSyariah && hasKPR ? "kpr" : !hasKPR && hasSyariah ? "syariah" : finType;
+  const isKpr = effectiveFinType === "kpr";
 
-  /* Syariah: auto-calculate from margin */
+  // DP amount in juta: Syariah uses %, KPR uses nominal rupiah → convert to juta
+  const dpAmountJuta = prop ? (isKpr ? dpNum / 1_000_000 : prop.price * dpNum / 100) : 0;
+  const remainingJuta = prop ? (prop.price - dpAmountJuta) : 0;
+
+  /* Syariah: auto-calculate from margin (DP in %) */
   const syariahMonthly = (() => {
     if (!prop || !hasSyariah) return 0;
     const margin = prop.syariahMargin ?? 15;
@@ -2058,18 +2061,18 @@ function CalculatorSection() {
     return loan / (tenorNum * 12) / 1_000_000;
   })();
 
-  /* KPR: from saved grid data or annuity formula fallback */
+  /* KPR: from saved grid data or annuity formula fallback (DP in nominal rupiah) */
   const kprMonthly = (() => {
     if (!prop || !hasKPR) return 0;
-    // Try from saved KPR grid first
-    const saved = prop.kprInstallments?.[dpNum]?.[tenorNum];
+    // Try from saved KPR grid first (key is DP nominal as string)
+    const saved = prop.kprInstallments?.[String(dpNum)]?.[String(tenorNum)];
     if (saved && saved > 0) return saved;
     // Fallback: annuity formula with 7.5% p.a.
-    const loan = remaining * 1_000_000;
+    const loanRupiah = remainingJuta * 1_000_000;
     const r = 0.075 / 12;
     const n = tenorNum * 12;
-    if (r === 0 || n === 0) return 0;
-    return (loan * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1) / 1_000_000;
+    if (loanRupiah <= 0 || r === 0 || n === 0) return 0;
+    return (loanRupiah * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1) / 1_000_000;
   })();
 
   const monthly = effectiveFinType === "syariah" ? syariahMonthly : kprMonthly;
@@ -2087,7 +2090,7 @@ function CalculatorSection() {
         if (!newProp.dpOptions.includes(dpNum)) setDp(String(newProp.dpOptions[0]));
         if (!newProp.tenorOptions.includes(tenorNum)) setTenor(String(newProp.tenorOptions[newProp.tenorOptions.length - 1]));
       } else if (finType === "kpr" && newTypes.includes("kpr")) {
-        const dps = newProp.kprDpOptions ?? [10, 15, 20, 30];
+        const dps = newProp.kprDpOptions ?? [1000000, 2000000, 3000000, 4000000, 5000000];
         if (!dps.includes(dpNum)) setDp(String(dps[0]));
         const tenors = newProp.kprTenorOptions ?? [5, 10, 15, 20];
         if (!tenors.includes(tenorNum)) setTenor(String(tenors[0]));
@@ -2105,7 +2108,7 @@ function CalculatorSection() {
       if (!prop.dpOptions.includes(dpNum)) setDp(String(prop.dpOptions[0]));
       if (!prop.tenorOptions.includes(tenorNum)) setTenor(String(prop.tenorOptions[prop.tenorOptions.length - 1]));
     } else if (type === "kpr" && prop) {
-      const dps = prop.kprDpOptions ?? [10, 15, 20, 30];
+      const dps = prop.kprDpOptions ?? [1000000, 2000000, 3000000, 4000000, 5000000];
       if (!dps.includes(dpNum)) setDp(String(dps[0]));
       const tenors = prop.kprTenorOptions ?? [5, 10, 15, 20];
       if (!tenors.includes(tenorNum)) setTenor(String(tenors[0]));
@@ -2114,7 +2117,7 @@ function CalculatorSection() {
 
   const dpOptions = effectiveFinType === "syariah"
     ? (prop?.dpOptions ?? [30, 50])
-    : (prop?.kprDpOptions ?? [10, 15, 20, 30]);
+    : (prop?.kprDpOptions ?? [1000000, 2000000, 3000000, 4000000, 5000000]);
   const tenorOptions = effectiveFinType === "syariah"
     ? (prop?.tenorOptions ?? [1, 5])
     : (prop?.kprTenorOptions ?? [5, 10, 15, 20]);
@@ -2122,6 +2125,15 @@ function CalculatorSection() {
   const dpMax = dpOptions[dpOptions.length - 1];
   const tenorMin = tenorOptions[0];
   const tenorMax = tenorOptions[tenorOptions.length - 1];
+
+  // Format DP label: Rp for KPR, % for Syariah
+  const formatRpShort = (n: number) => {
+    if (n >= 1_000_000_000) return (n / 1_000_000_000).toFixed(1).replace('.0', '') + ' M';
+    if (n >= 1_000_000) return (n / 1_000_000).toFixed(0) + ' jt';
+    if (n >= 1_000) return (n / 1_000).toFixed(0) + ' rb';
+    return String(n);
+  };
+  const formatDpLabel = (val: number) => isKpr ? `Rp ${formatRpShort(val)}` : `${val}%`;
 
   return (
     <section id="simulasi" className="py-20 md:py-28 bg-warm-bg relative">
@@ -2198,35 +2210,58 @@ function CalculatorSection() {
 
                 <div>
                   <Label className="text-sm font-semibold text-gray-700 mb-2 block">
-                    Uang Muka (DP): {dp}%
+                    Uang Muka (DP): {formatDpLabel(dpNum)}
                   </Label>
-                  <input
-                    type="range"
-                    min={dpMin}
-                    max={dpMax}
-                    step={dpOptions.length > 2 && (dpOptions[1] - dpOptions[0]) > 5 ? (dpOptions[1] - dpOptions[0]) : 5}
-                    value={dp}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value);
-                      const closest = dpOptions.reduce((a, b) =>
-                        Math.abs(b - val) < Math.abs(a - val) ? b : a
-                      );
-                      setDp(String(closest));
-                    }}
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-red-600"
-                  />
-                  <div className="flex justify-between text-xs text-gray-400 mt-1">
-                    {dpOptions.map((opt) => (
-                      <button
-                        key={opt}
-                        type="button"
-                        onClick={() => setDp(String(opt))}
-                        className={`${dpNum === opt ? "text-red-600 font-bold" : "hover:text-gray-600"} transition-colors`}
-                      >
-                        {opt}%
-                      </button>
-                    ))}
-                  </div>
+                  {isKpr ? (
+                    // KPR: button-style DP selection (nominal rupiah)
+                    <div className="flex flex-wrap gap-2">
+                      {dpOptions.map((opt) => (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => setDp(String(opt))}
+                          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all duration-200 ${
+                            dpNum === opt
+                              ? "bg-gradient-to-r from-red-600 to-red-700 text-white shadow-md shadow-red-200"
+                              : "bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-600"
+                          }`}
+                        >
+                          Rp {formatRpShort(opt)}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    // Syariah: slider DP (percentage)
+                    <>
+                      <input
+                        type="range"
+                        min={dpMin}
+                        max={dpMax}
+                        step={dpOptions.length > 2 && (dpOptions[1] - dpOptions[0]) > 5 ? (dpOptions[1] - dpOptions[0]) : 5}
+                        value={dp}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value);
+                          const closest = dpOptions.reduce((a, b) =>
+                            Math.abs(b - val) < Math.abs(a - val) ? b : a
+                          );
+                          setDp(String(closest));
+                        }}
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-red-600"
+                      />
+                      <div className="flex justify-between text-xs text-gray-400 mt-1">
+                        {dpOptions.map((opt) => (
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() => setDp(String(opt))}
+                            className={`${dpNum === opt ? "text-red-600 font-bold" : "hover:text-gray-600"} transition-colors`}
+                          >
+                            {opt}%
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Tenor: slider for Syariah, tab buttons for KPR */}
@@ -2307,8 +2342,8 @@ function CalculatorSection() {
                 <div className="space-y-4">
                   {[
                     { label: "Harga Rumah", value: `Rp ${prop ? formatRp(prop.price * 1_000_000) : "0"}` },
-                    { label: `Uang Muka (${dp}%)`, value: `Rp ${formatRp(dpAmount * 1_000_000)}` },
-                    { label: "Sisa Pembayaran", value: `Rp ${formatRp(remaining * 1_000_000)}` },
+                    { label: `Uang Muka (${formatDpLabel(dpNum)})`, value: `Rp ${formatRp(dpAmountJuta * 1_000_000)}` },
+                    { label: "Sisa Pembayaran", value: `Rp ${formatRp(remainingJuta * 1_000_000)}` },
                     { label: `Tenor (${tenor} tahun)`, value: `${tenorNum * 12} bulan` },
                   ].map((row) => (
                     <div key={row.label} className="flex justify-between items-center gap-2 min-w-0">
@@ -2321,7 +2356,7 @@ function CalculatorSection() {
                 <Separator className="bg-white/20 my-6" />
 
                 <a
-                  href={`https://wa.me/${S.contact_wa}?text=Halo,%20saya%20tertarik%20simulasi%20cicilan:%0AProperti:%20${encodeURIComponent(prop?.name ?? "")}%0AHarga:%20Rp%20${prop?.price}%20Juta%0ATipe:%20${effectiveFinType === "syariah" ? "Syariah" : "KPR"}%0ADP:%20${dp}%25%0ATenor:%20${tenor}%20tahun%0ACicilan:%20Rp%20${formatRp(monthly * 1_000_000)}/bulan`}
+                  href={`https://wa.me/${S.contact_wa}?text=Halo,%20saya%20tertarik%20simulasi%20cicilan:%0AProperti:%20${encodeURIComponent(prop?.name ?? "")}%0AHarga:%20Rp%20${prop?.price}%20Juta%0ATipe:%20${effectiveFinType === "syariah" ? "Syariah" : "KPR"}%0ADP:%20${encodeURIComponent(formatDpLabel(dpNum))}%0ATenor:%20${tenor}%20tahun%0ACicilan:%20Rp%20${formatRp(monthly * 1_000_000)}/bulan`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 w-full px-6 py-4 bg-white text-red-700 font-bold rounded-xl hover:bg-red-50 transition-colors shadow-lg text-lg"
@@ -2354,7 +2389,7 @@ function CalculatorSection() {
                     <thead>
                       <tr className={`text-white ${effectiveFinType === "syariah" ? "bg-gradient-to-r from-amber-500 to-amber-600" : "bg-gradient-to-r from-red-600 to-red-700"}`}>
                         <th className="px-4 py-3 text-left font-semibold rounded-tl-xl">
-                          DP ↓ &nbsp;/ Tenor →
+                          DP {isKpr ? "(Rp)" : "(%)"} ↓ / Tenor →
                         </th>
                         {tenorOptions.map((t) => (
                           <th
@@ -2375,26 +2410,27 @@ function CalculatorSection() {
                           }`}
                         >
                           <td className="px-4 py-3 font-semibold text-gray-700">
-                            {dpVal}%
+                            {isKpr ? `Rp ${formatRpShort(dpVal)}` : `${dpVal}%`}
                           </td>
                           {tenorOptions.map((t) => {
                             let val = 0;
                             if (effectiveFinType === "syariah") {
-                              // Auto-calculate from price + margin
+                              // Auto-calculate from price + margin (DP in %)
                               const margin = prop.syariahMargin ?? 15;
                               const dpAmt = prop.price * (dpVal / 100);
                               const sp = prop.price * (1 + margin / 100);
                               const loan = sp - dpAmt;
                               val = loan / (t * 12);
                             } else {
-                              // KPR: from saved grid or annuity fallback
-                              const saved = prop.kprInstallments?.[dpVal]?.[t];
+                              // KPR: from saved grid (DP in nominal) or annuity fallback
+                              const saved = prop.kprInstallments?.[String(dpVal)]?.[String(t)];
                               if (saved && saved > 0) { val = saved; }
                               else {
-                                const loanRupiah = (prop.price * 1_000_000) * (1 - dpVal / 100);
+                                const dpJuta = dpVal / 1_000_000;
+                                const loanRupiah = (prop.price - dpJuta) * 1_000_000;
                                 const r = 0.075 / 12;
                                 const n = t * 12;
-                                if (r > 0 && n > 0) val = (loanRupiah * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1) / 1_000_000;
+                                if (loanRupiah > 0 && r > 0 && n > 0) val = (loanRupiah * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1) / 1_000_000;
                               }
                             }
                             const isActive = dpVal === dpNum && t === tenorNum;
