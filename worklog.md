@@ -141,3 +141,22 @@ Stage Summary:
 - Flat indicator color is yellow throughout
 - Public calculator uses the saved interest rate from admin
 - Pushed as commit 76c71c5
+
+---
+Task ID: 1
+Agent: main
+Task: Fix cicilan mulai to show cheapest KPR installment instead of "Hubungi Kami", fix empty img src console error, update kavling card display
+
+Work Log:
+- Modified `getCheapestKprInstallment()` to calculate on-the-fly using annuity formula when `kprInstallments` grid is empty/missing
+- Added fallback calculation using property's saved `kprInterestRate`, `kprDpOptions`, `kprTenorOptions`
+- Fixed empty string `src` attribute on `<img>` in `PropertyCard`, `CompactPropertyCard`, and `PropertyGallery` — replaced with conditional rendering and placeholder icon
+- Updated PropertyCard spec pills for kavling: shows LT + Harga/m² (2 columns) instead of LB/LT/KT/KM (4 columns)
+- Hidden "Type" badge on PropertyCard for kavling category
+- Fixed thumbnail filtering to skip empty image entries
+- Committed as `1f65e56` and pushed to GitHub
+
+Stage Summary:
+- All property cards now show cheapest KPR installment (calculated dynamically) instead of "Hubungi Kami"
+- Console error for empty img src resolved
+- Kavling property cards display land-specific info (LT + price per m²)
