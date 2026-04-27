@@ -2028,21 +2028,16 @@ function CalculatorSection() {
   const prop = PROPERTIES.find((p) => p.id === effectivePropId);
   const dpNum = parseInt(dp);
   const tenorNum = parseInt(tenor);
-  // KPR DP is nominal (rupiah), Syariah DP is percentage
-  const kprDpAmountJt = prop ? dpNum / 1_000_000 : 0; // KPR: nominal → juta
-  const syariahDpAmountJt = prop ? prop.price * dpNum / 100 : 0; // Syariah: percentage
-  const effectiveFinType = (() => {
-    const finTypes = prop?.financingTypes ?? ["syariah", "kpr"];
-    if (!finTypes.includes("syariah") && finTypes.includes("kpr")) return "kpr";
-    if (!finTypes.includes("kpr") && finTypes.includes("syariah")) return "syariah";
-    return finType;
-  })();
-  const dpAmount = effectiveFinType === "kpr" ? kprDpAmountJt : syariahDpAmountJt;
+  const dpAmount = prop ? prop.price * dpNum / 100 : 0;
   const remaining = prop ? prop.price - dpAmount : 0;
 
   // Available financing types for this property
+  const finTypes = prop?.financingTypes ?? ["syariah", "kpr"];
   const hasSyariah = finTypes.includes("syariah");
   const hasKPR = finTypes.includes("kpr");
+
+  // Effective fin type: only show what's available
+  const effectiveFinType = !hasSyariah && hasKPR ? "kpr" : !hasKPR && hasSyariah ? "syariah" : finType;
 
   /* Syariah: auto-calculate from margin */
   const syariahMonthly = (() => {
@@ -2084,7 +2079,7 @@ function CalculatorSection() {
         if (!newProp.dpOptions.includes(dpNum)) setDp(String(newProp.dpOptions[0]));
         if (!newProp.tenorOptions.includes(tenorNum)) setTenor(String(newProp.tenorOptions[newProp.tenorOptions.length - 1]));
       } else if (finType === "kpr" && newTypes.includes("kpr")) {
-        const dps = newProp.kprDpOptions ?? [50000000, 100000000, 150000000, 200000000];
+        const dps = newProp.kprDpOptions ?? [10, 15, 20, 30];
         if (!dps.includes(dpNum)) setDp(String(dps[0]));
         const tenors = newProp.kprTenorOptions ?? [5, 10, 15, 20];
         if (!tenors.includes(tenorNum)) setTenor(String(tenors[0]));
@@ -2102,7 +2097,7 @@ function CalculatorSection() {
       if (!prop.dpOptions.includes(dpNum)) setDp(String(prop.dpOptions[0]));
       if (!prop.tenorOptions.includes(tenorNum)) setTenor(String(prop.tenorOptions[prop.tenorOptions.length - 1]));
     } else if (type === "kpr" && prop) {
-      const dps = prop.kprDpOptions ?? [50000000, 100000000, 150000000, 200000000];
+      const dps = prop.kprDpOptions ?? [10, 15, 20, 30];
       if (!dps.includes(dpNum)) setDp(String(dps[0]));
       const tenors = prop.kprTenorOptions ?? [5, 10, 15, 20];
       if (!tenors.includes(tenorNum)) setTenor(String(tenors[0]));
@@ -2111,7 +2106,7 @@ function CalculatorSection() {
 
   const dpOptions = effectiveFinType === "syariah"
     ? (prop?.dpOptions ?? [30, 50])
-    : (prop?.kprDpOptions ?? [50000000, 100000000, 150000000, 200000000]);
+    : (prop?.kprDpOptions ?? [10, 15, 20, 30]);
   const tenorOptions = effectiveFinType === "syariah"
     ? (prop?.tenorOptions ?? [1, 5])
     : (prop?.kprTenorOptions ?? [5, 10, 15, 20]);
@@ -2195,13 +2190,13 @@ function CalculatorSection() {
 
                 <div>
                   <Label className="text-sm font-semibold text-gray-700 mb-2 block">
-                    Uang Muka (DP): {effectiveFinType === "kpr" ? `Rp ${(dpNum / 1_000_000).toFixed(0)} jt` : `${dp}%`}
+                    Uang Muka (DP): {dp}%
                   </Label>
                   <input
                     type="range"
                     min={dpMin}
                     max={dpMax}
-                    step={effectiveFinType === "kpr" ? (dpOptions.length > 2 && (dpOptions[1] - dpOptions[0]) > 0 ? Math.max(1, (dpOptions[1] - dpOptions[0]) / 10) : 1) : (dpOptions.length > 2 && (dpOptions[1] - dpOptions[0]) > 5 ? (dpOptions[1] - dpOptions[0]) : 5)}
+                    step={dpOptions.length > 2 && (dpOptions[1] - dpOptions[0]) > 5 ? (dpOptions[1] - dpOptions[0]) : 5}
                     value={dp}
                     onChange={(e) => {
                       const val = parseInt(e.target.value);
@@ -2220,7 +2215,7 @@ function CalculatorSection() {
                         onClick={() => setDp(String(opt))}
                         className={`${dpNum === opt ? "text-red-600 font-bold" : "hover:text-gray-600"} transition-colors`}
                       >
-                        {effectiveFinType === "kpr" ? `${(opt / 1_000_000).toFixed(0)} jt` : `${opt}%`}
+                        {opt}%
                       </button>
                     ))}
                   </div>

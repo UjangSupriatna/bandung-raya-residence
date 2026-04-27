@@ -64,7 +64,6 @@ interface Property {
   type: string;
   category: string;
   price: number;
-  landPricePerSqm: number;
   location: string;
   bedrooms: number;
   bathrooms: number;
@@ -108,7 +107,6 @@ interface FormState {
   dpOptions: string; tenorOptions: string;
   syariahMargin: string;
   kprDpOptions: string; kprTenorOptions: string; kprInstallments: string;
-  landPricePerSqm: string;
 }
 
 const emptyForm: FormState = {
@@ -120,16 +118,9 @@ const emptyForm: FormState = {
   dpOptions: "30,35,40,45,50", tenorOptions: "1,2,3,4,5",
   syariahMargin: "15",
   kprDpOptions: "0,10,15,20,25,30", kprTenorOptions: "5,10,15,20,25", kprInstallments: "{}",
-  landPricePerSqm: "",
 };
 
 // ──── Helpers ────
-function formatRupiahShort(amount: number): string {
-  if (amount >= 1_000_000_000) return (amount / 1_000_000_000).toFixed(1).replace('.0', '') + ' M';
-  if (amount >= 1_000_000) return (amount / 1_000_000).toFixed(0) + ' jt';
-  if (amount >= 1_000) return (amount / 1_000).toFixed(0) + ' rb';
-  return String(amount);
-}
 function generateSlug(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
@@ -275,7 +266,7 @@ function InstallmentGridEditor({
     <div className="space-y-3">
       {/* Quick actions */}
       <div className="flex items-center gap-2">
-        <span className="text-xs text-gray-500">Isi tabel cicilan (jt/bln) — DP dalam rupiah:</span>
+        <span className="text-xs text-gray-500">Isi tabel cicilan (jt/bln):</span>
         <Button
           type="button"
           variant="outline"
@@ -312,8 +303,8 @@ function InstallmentGridEditor({
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50">
-              <th className="px-3 py-2 text-xs font-semibold text-gray-500 text-left border-r border-gray-200 min-w-[90px]">
-                DP (Rp) ↓ / Tenor →
+              <th className="px-3 py-2 text-xs font-semibold text-gray-500 text-left border-r border-gray-200 min-w-[70px]">
+                DP ↓ / Tenor →
               </th>
               {tenorList.map((t) => (
                 <th key={t} className="px-2 py-2 text-xs font-semibold text-gray-600 text-center min-w-[85px]">
@@ -326,7 +317,7 @@ function InstallmentGridEditor({
             {dpList.map((dp) => (
               <tr key={dp} className="border-t border-gray-100 hover:bg-amber-50/30 transition-colors">
                 <td className="px-3 py-1.5 font-semibold text-gray-700 text-xs border-r border-gray-200 bg-gray-50/80">
-                  Rp {formatRupiahShort(dp)}
+                  {dp}%
                 </td>
                 {tenorList.map((tenor) => {
                   const dk = String(dp);
@@ -571,7 +562,6 @@ export default function ProyekPage() {
       kprDpOptions: parseJSONToCSV(p.kprDpOptions, "0,10,15,20,25,30"),
       kprTenorOptions: parseJSONToCSV(p.kprTenorOptions, "5,10,15,20,25"),
       kprInstallments: p.kprInstallments || "{}",
-      landPricePerSqm: String(p.landPricePerSqm ?? ""),
     });
     setErrors({});
     setFormOpen(true);
@@ -607,6 +597,7 @@ export default function ProyekPage() {
   const handleSave = async () => {
     const newErrors: Record<string, string> = {};
     if (!form.name.trim()) newErrors.name = "Nama Proyek wajib diisi";
+    if (!form.type.trim()) newErrors.type = "Tipe wajib diisi";
     if (!form.category) newErrors.category = "Kategori wajib diisi";
     if (!form.price || Number(form.price) <= 0) newErrors.price = "Harga wajib diisi";
 
@@ -795,11 +786,12 @@ export default function ProyekPage() {
               <Input value={form.tag} onChange={(e) => setForm({ ...form, tag: e.target.value })} placeholder="Best Seller, Populer, Baru..." />
             </div>
             <div className="space-y-2">
-              <Label>Tipe (LB/LT)</Label>
+              <Label className="flex items-center gap-0.5">Tipe (LB/LT) <span className="text-red-500">*</span></Label>
               <Input
                 value={form.type}
                 onChange={(e) => updateField("type", e.target.value)}
                 placeholder="45/127"
+                className={hasError("type") ? "border-red-400 focus-visible:ring-red-400" : ""}
               />
               {errors.type && (
                 <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errors.type}</p>
@@ -807,17 +799,7 @@ export default function ProyekPage() {
             </div>
             <div className="space-y-2">
               <Label className="flex items-center gap-0.5">Kategori <span className="text-red-500">*</span></Label>
-              <Select value={form.category} onValueChange={(v) => {
-                updateField("category", v);
-                // Auto-calculate price when switching to kavling
-                if (v === "kavling") {
-                  const la = parseFloat(form.landArea) || 0;
-                  const lp = parseFloat(form.landPricePerSqm) || 0;
-                  if (la > 0 && lp > 0) {
-                    setForm((prev) => ({ ...prev, category: v, price: String(((la * lp) / 1_000_000).toFixed(2)) }));
-                  }
-                }
-              }}>
+              <Select value={form.category} onValueChange={(v) => updateField("category", v)}>
                 <SelectTrigger className={hasError("category") ? "border-red-400 focus:ring-red-400" : ""}>
                   <SelectValue placeholder="Pilih kategori" />
                 </SelectTrigger>
@@ -839,8 +821,7 @@ export default function ProyekPage() {
                 value={form.price}
                 onChange={(e) => updateField("price", e.target.value)}
                 placeholder="575"
-                readOnly={form.category === "kavling"}
-                className={`${hasError("price") ? "border-red-400 focus-visible:ring-red-400" : ""} ${form.category === "kavling" ? "bg-gray-50 text-gray-500" : ""}`}
+                className={hasError("price") ? "border-red-400 focus-visible:ring-red-400" : ""}
               />
               {errors.price && (
                 <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errors.price}</p>
@@ -852,42 +833,8 @@ export default function ProyekPage() {
             </div>
             <div className="space-y-2">
               <Label>Luas Tanah (m²)</Label>
-              <Input type="number" value={form.landArea} onChange={(e) => {
-                setForm({ ...form, landArea: e.target.value });
-                // Auto-calculate price for kavling
-                if (form.category === "kavling" && form.landPricePerSqm) {
-                  const la = parseFloat(e.target.value) || 0;
-                  const lp = parseFloat(form.landPricePerSqm) || 0;
-                  if (la > 0 && lp > 0) {
-                    setForm((prev) => ({ ...prev, landArea: e.target.value, price: String(((la * lp) / 1_000_000).toFixed(2)) }));
-                  }
-                }
-              }} placeholder="60" />
+              <Input type="number" value={form.landArea} onChange={(e) => setForm({ ...form, landArea: e.target.value })} placeholder="127" />
             </div>
-            {form.category === "kavling" && (
-              <div className="space-y-2">
-                <Label className="flex items-center gap-1">
-                  Harga Tanah per m² (Rp)
-                  {form.landArea && form.landPricePerSqm && (
-                    <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">Auto-hitung → {(parseFloat(form.landArea) * parseFloat(form.landPricePerSqm) / 1_000_000).toFixed(2)} jt</span>
-                  )}
-                </Label>
-                <Input
-                  type="number"
-                  value={form.landPricePerSqm}
-                  onChange={(e) => {
-                    setForm({ ...form, landPricePerSqm: e.target.value });
-                    const la = parseFloat(form.landArea) || 0;
-                    const lp = parseFloat(e.target.value) || 0;
-                    if (la > 0 && lp > 0) {
-                      setForm((prev) => ({ ...prev, landPricePerSqm: e.target.value, price: String(((la * lp) / 1_000_000).toFixed(2)) }));
-                    }
-                  }}
-                  placeholder="2500000"
-                />
-                <p className="text-[10px] text-gray-400">Harga properti akan otomatis dihitung dari Luas Tanah × Harga/m²</p>
-              </div>
-            )}
             <div className="space-y-2">
               <Label>Kamar Tidur</Label>
               <Input type="number" value={form.bedrooms} onChange={(e) => setForm({ ...form, bedrooms: e.target.value })} />
@@ -1015,8 +962,8 @@ export default function ProyekPage() {
                   <div className="sm:col-span-2 space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label className="text-xs font-medium text-gray-600">Opsi DP — Nominal Rupiah</Label>
-                        <TagInput values={form.kprDpOptions} onChange={(v) => setForm({ ...form, kprDpOptions: v })} placeholder="Contoh: 50000000" suffix="" />
+                        <Label className="text-xs font-medium text-gray-600">Opsi DP (Uang Muka)</Label>
+                        <TagInput values={form.kprDpOptions} onChange={(v) => setForm({ ...form, kprDpOptions: v })} placeholder="Contoh: 10" suffix="%" />
                       </div>
                       <div className="space-y-2">
                         <Label className="text-xs font-medium text-gray-600">Opsi Tenor</Label>
@@ -1071,8 +1018,8 @@ export default function ProyekPage() {
                     <TabsContent value="kpr" className="space-y-4 mt-4">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label className="text-xs font-medium text-gray-600">Opsi DP — Nominal Rupiah</Label>
-                          <TagInput values={form.kprDpOptions} onChange={(v) => setForm({ ...form, kprDpOptions: v })} placeholder="Contoh: 50000000" suffix="" />
+                          <Label className="text-xs font-medium text-gray-600">Opsi DP (Uang Muka)</Label>
+                          <TagInput values={form.kprDpOptions} onChange={(v) => setForm({ ...form, kprDpOptions: v })} placeholder="Contoh: 10" suffix="%" />
                         </div>
                         <div className="space-y-2">
                           <Label className="text-xs font-medium text-gray-600">Opsi Tenor (Jangka Waktu)</Label>

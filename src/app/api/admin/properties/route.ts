@@ -59,7 +59,6 @@ export async function POST(req: Request) {
       tag, installment, financingTypes, dpOptions, tenorOptions, installments,
       kprDpOptions, kprTenorOptions, kprInstallments,
       syariahMargin,
-      landPricePerSqm,
     } = body;
 
     if (!name || !slug || !type || !category || !price) {
@@ -94,7 +93,6 @@ export async function POST(req: Request) {
         tenorOptions: tenorOptions || "[1,2,3,4,5]",
         installments: installments || "{}",
         syariahMargin: syariahMargin !== undefined ? parseFloat(syariahMargin) : 15,
-        landPricePerSqm: landPricePerSqm !== undefined ? parseFloat(landPricePerSqm) : 0,
         kprDpOptions: kprDpOptions || "[0,10,15,20,25,30]",
         kprTenorOptions: kprTenorOptions || "[5,10,15,20,25]",
         kprInstallments: kprInstallments || "{}",
