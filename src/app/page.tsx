@@ -686,6 +686,27 @@ function TentangKamiKeunggulanSection() {
   );
 }
 
+/* ─────────────────────────── HELPERS ─────────────────────────── */
+
+// Get cheapest KPR installment, preferring longest tenor
+function getCheapestKprInstallment(property: Property): { amount: number; dp: number; tenor: number } | null {
+  if (!property.kprInstallments) return null;
+  let best: { amount: number; dp: number; tenor: number } | null = null;
+  for (const dpStr of Object.keys(property.kprInstallments)) {
+    const dp = parseInt(dpStr);
+    const tenorMap = property.kprInstallments[dpStr];
+    for (const tenorStr of Object.keys(tenorMap)) {
+      const tenor = parseInt(tenorStr);
+      const amount = tenorMap[tenorStr];
+      if (amount <= 0) continue;
+      if (!best || amount < best.amount || (amount === best.amount && tenor > best.tenor)) {
+        best = { amount, dp, tenor };
+      }
+    }
+  }
+  return best;
+}
+
 /* ─────────────────────────── PROPERTY PREVIEW (Home) ─────────────────────────── */
 
 function CompactPropertyCard({
@@ -695,31 +716,8 @@ function CompactPropertyCard({
   property: Property;
   onSelect: (p: Property) => void;
 }) {
-  // Auto-calculate lowest installment
-  const finTypes = property.financingTypes ?? ["syariah", "kpr"];
-  const hasSyariah = finTypes.includes("syariah");
-  const dpOpts = property.dpOptions || [];
-  const tenorOpts = property.tenorOptions || [];
-
-  let lowestInstallment = 0;
-  if (hasSyariah && dpOpts.length > 0 && tenorOpts.length > 0) {
-    const margin = property.syariahMargin ?? 15;
-    const vals: number[] = [];
-    for (const dp of dpOpts) for (const t of tenorOpts) {
-      if (property.price <= 0 || margin <= 0 || t <= 0) continue;
-      const dpAmt = property.price * (dp / 100);
-      const sp = property.price * (1 + margin / 100);
-      vals.push((sp - dpAmt) / (t * 12));
-    }
-    if (vals.length > 0) lowestInstallment = Math.min(...vals);
-  }
-  if (property.kprInstallments) {
-    const kprVals = Object.values(property.kprInstallments).flatMap((dp) => Object.values(dp)).filter((v) => v > 0);
-    if (kprVals.length > 0) {
-      const kprLow = Math.min(...kprVals);
-      if (lowestInstallment === 0 || kprLow < lowestInstallment) lowestInstallment = kprLow;
-    }
-  }
+  // Get cheapest KPR installment (longest tenor preferred)
+  const bestKpr = getCheapestKprInstallment(property);
 
   return (
     <FadeIn className="h-full">
@@ -756,7 +754,7 @@ function CompactPropertyCard({
               <span className="text-xs text-gray-500 ml-1">Juta</span>
             </div>
             <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-lg">
-              {lowestInstallment > 0 ? `Rp ${new Intl.NumberFormat("id-ID").format(Math.round(lowestInstallment * 1_000_000))}/bln` : "Hubungi kami"}
+              {bestKpr ? `Rp ${new Intl.NumberFormat("id-ID").format(Math.round(bestKpr.amount * 1_000_000))}/bln` : "Hubungi kami"}
             </span>
           </div>
         </CardContent>
@@ -1338,32 +1336,8 @@ function PropertyCard({
   property: Property;
   onSelect: (p: Property) => void;
 }) {
-  // Auto-calculate lowest installment for Syariah
-  const finTypes = property.financingTypes ?? ["syariah", "kpr"];
-  const hasSyariah = finTypes.includes("syariah");
-  const dpOpts = property.dpOptions || [];
-  const tenorOpts = property.tenorOptions || [];
-
-  let lowestInstallment = 0;
-  if (hasSyariah && dpOpts.length > 0 && tenorOpts.length > 0) {
-    const margin = property.syariahMargin ?? 15;
-    const vals: number[] = [];
-    for (const dp of dpOpts) for (const t of tenorOpts) {
-      if (property.price <= 0 || margin <= 0 || t <= 0) continue;
-      const dpAmt = property.price * (dp / 100);
-      const sp = property.price * (1 + margin / 100);
-      vals.push((sp - dpAmt) / (t * 12));
-    }
-    if (vals.length > 0) lowestInstallment = Math.min(...vals);
-  }
-  // Also check KPR data
-  if (property.kprInstallments) {
-    const kprVals = Object.values(property.kprInstallments).flatMap((dp) => Object.values(dp)).filter((v) => v > 0);
-    if (kprVals.length > 0) {
-      const kprLow = Math.min(...kprVals);
-      if (lowestInstallment === 0 || kprLow < lowestInstallment) lowestInstallment = kprLow;
-    }
-  }
+  // Get cheapest KPR installment (longest tenor preferred)
+  const bestKpr = getCheapestKprInstallment(property);
 
   return (
     <FadeIn className="h-full">
@@ -1473,7 +1447,7 @@ function PropertyCard({
             <div>
               <p className="text-[10px] text-gray-400 uppercase tracking-wider">Cicilan Mulai</p>
               <p className="text-sm font-bold text-green-600">
-                {lowestInstallment > 0 ? `Rp ${new Intl.NumberFormat("id-ID").format(Math.round(lowestInstallment * 1_000_000))}/bln` : "Hubungi kami"}
+                {bestKpr ? `Rp ${new Intl.NumberFormat("id-ID").format(Math.round(bestKpr.amount * 1_000_000))}/bln` : "Hubungi kami"}
               </p>
             </div>
             <Button onClick={() => onSelect(property)} size="sm" className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-md shadow-red-200">
@@ -1983,6 +1957,38 @@ function PropertyDetailDialog({
                       {f}
                     </div>
                   ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Simulasi Cicilan — Cheapest KPR (longest tenor) */}
+          {(() => {
+            const best = getCheapestKprInstallment(property);
+            if (!best) return null;
+            const formatRp = (n: number) => new Intl.NumberFormat("id-ID").format(Math.round(n));
+            const monthlyRp = Math.round(best.amount * 1_000_000);
+            return (
+              <div className="mb-5 border border-red-100 rounded-xl overflow-hidden">
+                <div className="bg-gradient-to-r from-red-600 to-red-700 px-5 py-4 flex items-center gap-2">
+                  <Calculator className="w-5 h-5 text-white" />
+                  <span className="text-white font-bold text-sm">Simulasi Cicilan KPR</span>
+                </div>
+                <div className="p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-gray-400 uppercase tracking-wider">Cicilan Mulai</p>
+                      <p className="text-2xl font-extrabold text-red-600">Rp {formatRp(monthlyRp)}</p>
+                      <p className="text-xs text-gray-500">/bulan • KPR {best.tenor} tahun</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-gray-400">DP</p>
+                      <p className="text-lg font-bold text-gray-700">Rp {formatRp(best.dp)}</p>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-gray-400 flex items-center gap-1">
+                    <Percent className="w-3 h-3" /> Cicilan terendah dari tenor terlama — estimasi KPR Bank
+                  </p>
                 </div>
               </div>
             );
@@ -3619,7 +3625,6 @@ function ProyekPage({
     <>
       <PageBanner title="Proyek Kami" subtitle="Pilih rumah idaman Anda dari berbagai tipe yang tersedia" bgImage={S.page_banner_image} />
       <PropertiesSection onSelectProperty={onSelectProperty} />
-      <CalculatorSection />
     </>
   );
 }
