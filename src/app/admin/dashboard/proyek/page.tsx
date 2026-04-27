@@ -732,6 +732,9 @@ export default function ProyekPage() {
     if (form.category !== "kavling" && !form.type.trim()) newErrors.type = "Tipe wajib diisi";
     if (!form.category) newErrors.category = "Kategori wajib diisi";
     if (!form.price || Number(form.price) <= 0) newErrors.price = "Harga wajib diisi";
+    if (form.category !== "kavling") {
+      if (!form.landArea || Number(form.landArea) <= 0) newErrors.landArea = "Luas tanah wajib diisi";
+    }
 
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
@@ -740,6 +743,13 @@ export default function ProyekPage() {
     // Convert comma-separated image URLs to JSON array (max 5)
     const imageList = form.image ? form.image.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 5) : [];
     const images = JSON.stringify(imageList);
+
+    // For kavling: force irrelevant fields to default values
+    const isKavling = form.category === "kavling";
+    const finalType = isKavling ? "" : form.type;
+    const finalBedrooms = isKavling ? 0 : parseInt(form.bedrooms) || 2;
+    const finalBathrooms = isKavling ? 0 : parseInt(form.bathrooms) || 1;
+    const finalBuildingArea = isKavling ? 0 : parseFloat(form.buildingArea) || 0;
 
     // Convert TagInput CSV strings to JSON arrays for dpOptions/tenorOptions
     const csvToJSON = (csv: string) => JSON.stringify(csv.split(",").map((v) => parseInt(v.trim())).filter((n) => !isNaN(n)));
@@ -776,6 +786,10 @@ export default function ProyekPage() {
         body: JSON.stringify({
           ...form,
           slug,
+          type: finalType,
+          bedrooms: String(finalBedrooms),
+          bathrooms: String(finalBathrooms),
+          buildingArea: String(finalBuildingArea),
           images,
           dpOptions: csvToJSON(form.dpOptions),
           tenorOptions: csvToJSON(form.tenorOptions),
@@ -946,8 +960,10 @@ export default function ProyekPage() {
                 value={form.type}
                 onChange={(e) => updateField("type", e.target.value)}
                 placeholder="45/127"
-                className={hasError("type") ? "border-red-400 focus-visible:ring-red-400" : ""}
+                readOnly={form.category === "kavling"}
+                className={`${hasError("type") ? "border-red-400 focus-visible:ring-red-400" : ""} ${form.category === "kavling" ? "bg-gray-50 text-gray-400" : ""}`}
               />
+              {form.category === "kavling" && <p className="text-[10px] text-gray-400">Otomatis kosong untuk kavling</p>}
               {errors.type && (
                 <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errors.type}</p>
               )}
@@ -956,13 +972,27 @@ export default function ProyekPage() {
               <Label className="flex items-center gap-0.5">Kategori <span className="text-red-500">*</span></Label>
               <Select value={form.category} onValueChange={(v) => {
                 updateField("category", v);
-                // Auto-calculate price when switching to kavling
                 if (v === "kavling") {
+                  setForm((prev) => ({
+                    ...prev,
+                    category: v,
+                    type: "",
+                    bedrooms: "0",
+                    bathrooms: "0",
+                    buildingArea: "0",
+                  }));
                   const la = parseFloat(form.landArea) || 0;
                   const lp = parseFloat(form.landPricePerSqm) || 0;
                   if (la > 0 && lp > 0) {
-                    setForm((prev) => ({ ...prev, category: v, price: String(((la * lp) / 1_000_000).toFixed(2)) }));
+                    setForm((prev) => ({ ...prev, price: String(((la * lp) / 1_000_000).toFixed(2)) }));
                   }
+                } else {
+                  setForm((prev) => ({
+                    ...prev,
+                    category: v,
+                    bedrooms: "2",
+                    bathrooms: "1",
+                  }));
                 }
               }}>
                 <SelectTrigger className={hasError("category") ? "border-red-400 focus:ring-red-400" : ""}>
@@ -1036,16 +1066,16 @@ export default function ProyekPage() {
               </div>
             )}
             <div className="space-y-2">
-              <Label>Kamar Tidur</Label>
-              <Input type="number" value={form.bedrooms} onChange={(e) => setForm({ ...form, bedrooms: e.target.value })} />
+              <Label>Kamar Tidur {form.category === "kavling" && <span className="text-[10px] text-gray-400 font-normal">(tidak berlaku)</span>}</Label>
+              <Input type="number" value={form.bedrooms} onChange={(e) => setForm({ ...form, bedrooms: e.target.value })} readOnly={form.category === "kavling"} className={form.category === "kavling" ? "bg-gray-50 text-gray-400" : ""} />
             </div>
             <div className="space-y-2">
-              <Label>Kamar Mandi</Label>
-              <Input type="number" value={form.bathrooms} onChange={(e) => setForm({ ...form, bathrooms: e.target.value })} />
+              <Label>Kamar Mandi {form.category === "kavling" && <span className="text-[10px] text-gray-400 font-normal">(tidak berlaku)</span>}</Label>
+              <Input type="number" value={form.bathrooms} onChange={(e) => setForm({ ...form, bathrooms: e.target.value })} readOnly={form.category === "kavling"} className={form.category === "kavling" ? "bg-gray-50 text-gray-400" : ""} />
             </div>
             <div className="space-y-2">
-              <Label>Luas Bangunan (m²) {form.category === "kavling" && <span className="text-[10px] text-gray-400 font-normal">opsional untuk kavling</span>}</Label>
-              <Input type="number" value={form.buildingArea} onChange={(e) => setForm({ ...form, buildingArea: e.target.value })} placeholder="45" />
+              <Label>Luas Bangunan (m²) {form.category === "kavling" && <span className="text-[10px] text-gray-400 font-normal">(tidak berlaku)</span>}</Label>
+              <Input type="number" value={form.buildingArea} onChange={(e) => setForm({ ...form, buildingArea: e.target.value })} placeholder="45" readOnly={form.category === "kavling"} className={form.category === "kavling" ? "bg-gray-50 text-gray-400" : ""} />
             </div>
             <div className="space-y-2">
               <Label>Status</Label>

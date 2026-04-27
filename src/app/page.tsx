@@ -2099,9 +2099,11 @@ function PropertyDetailDialog({
               <Badge variant="secondary" className="bg-red-50 text-red-700 text-xs font-semibold w-fit">
                 {CATEGORY_LABELS[property.category as PropertyCategory] || property.category}
               </Badge>
+              {property.category !== "kavling" && (
               <Badge variant="secondary" className="bg-gray-100 text-gray-600 text-xs w-fit">
                 {property.type}
               </Badge>
+              )}
               <div className="flex gap-1">
                 {(property.financingTypes ?? []).includes("syariah") && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-green-100 text-green-700">Syariah</span>
@@ -2116,18 +2118,31 @@ function PropertyDetailDialog({
           {/* Price & Type */}
           <div className="grid grid-cols-2 gap-4 mb-5">
             <div className="bg-red-50 rounded-xl p-4 text-center">
-              <p className="text-xs text-red-500 uppercase tracking-wider mb-1">Harga Rumah</p>
+              <p className="text-xs text-red-500 uppercase tracking-wider mb-1">{property.category === "kavling" ? "Harga Tanah" : "Harga Rumah"}</p>
               <p className="text-xl font-extrabold text-red-700">Rp {formatRp(property.price * 1_000_000)}</p>
               <p className="text-[11px] text-red-400 mt-0.5">({property.price} Juta)</p>
             </div>
-            <div className="bg-yellow-50 rounded-xl p-4 text-center">
-              <p className="text-xs text-yellow-600 uppercase tracking-wider mb-1">Tipe Bangunan</p>
-              <p className="text-xl font-extrabold text-yellow-700">{property.type}</p>
-              <p className="text-[11px] text-yellow-500 mt-0.5">LB {property.buildingArea} m² / LT {property.landArea} m²</p>
-            </div>
+            {property.category === "kavling" ? (
+              <div className="bg-yellow-50 rounded-xl p-4 text-center">
+                <p className="text-xs text-yellow-600 uppercase tracking-wider mb-1">Luas Tanah</p>
+                <p className="text-xl font-extrabold text-yellow-700">{property.landArea} Meter²</p>
+                {property.landArea > 0 && (
+                  <p className="text-[11px] text-yellow-500 mt-0.5">
+                    Harga per m²: Rp {formatRp(Math.round(property.price * 1_000_000 / property.landArea))}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="bg-yellow-50 rounded-xl p-4 text-center">
+                <p className="text-xs text-yellow-600 uppercase tracking-wider mb-1">Tipe Bangunan</p>
+                <p className="text-xl font-extrabold text-yellow-700">{property.type}</p>
+                <p className="text-[11px] text-yellow-500 mt-0.5">LB {property.buildingArea} m² / LT {property.landArea} m²</p>
+              </div>
+            )}
           </div>
 
-          {/* Spec Grid: LB, LT, KT, KM */}
+          {/* Spec Grid: only for non-kavling */}
+          {property.category !== "kavling" && (
           <div className="grid grid-cols-4 gap-2 mb-5">
             <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl">
               <Building2 className="w-5 h-5 text-red-500 shrink-0" />
@@ -2158,6 +2173,7 @@ function PropertyDetailDialog({
               </div>
             </div>
           </div>
+          )}
 
           {/* Description */}
           {property.description && (
