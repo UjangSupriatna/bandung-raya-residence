@@ -2274,25 +2274,7 @@ function PropertyDetailDialog({
           {/* Simulasi Cicilan Calculator */}
           <DetailSimulasiCicilan property={property} />
 
-          {/* CTA Buttons */}
-          <div className="flex gap-3">
-            <a
-              href={`https://wa.me/${S.contact_wa}?text=Halo,%20saya%20tertarik%20dengan%20rumah%20${encodeURIComponent(property.name)}%20${encodeURIComponent(property.type)}%20di%20${encodeURIComponent(property.location)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition-colors"
-            >
-              <MessageCircle className="w-4 h-4" />
-              WhatsApp
-            </a>
-            <a
-              href={`tel:${S.contact_phone.replace(/-/g, "")}`}
-              className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 transition-colors"
-            >
-              <Phone className="w-4 h-4" />
-              Telepon
-            </a>
-          </div>
+
         </div>
       </DialogContent>
     </Dialog>
