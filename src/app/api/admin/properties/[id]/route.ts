@@ -70,6 +70,7 @@ export async function PUT(
     if (body.kprDpOptions !== undefined) updateData.kprDpOptions = typeof body.kprDpOptions === "string" ? body.kprDpOptions : JSON.stringify(body.kprDpOptions);
     if (body.kprTenorOptions !== undefined) updateData.kprTenorOptions = typeof body.kprTenorOptions === "string" ? body.kprTenorOptions : JSON.stringify(body.kprTenorOptions);
     if (body.kprInstallments !== undefined) updateData.kprInstallments = typeof body.kprInstallments === "string" ? body.kprInstallments : JSON.stringify(body.kprInstallments);
+    if (body.landPricePerSqm !== undefined) updateData.landPricePerSqm = parseFloat(body.landPricePerSqm);
     if (body.isFeatured !== undefined) updateData.isFeatured = !!body.isFeatured;
 
     const property = await db.property.update({

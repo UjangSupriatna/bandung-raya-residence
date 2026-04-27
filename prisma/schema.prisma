@@ -26,6 +26,7 @@ model Property {
   type             String
   category         String   @default("inden")
   price            Float
+  landPricePerSqm  Float    @default(0)
   location         String   @default("Bandung Raya Residence")
   bedrooms         Int      @default(2)
   bathrooms        Int      @default(1)

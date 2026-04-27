@@ -83,3 +83,37 @@ Stage Summary:
 - PDF download feature completely removed from both KPR and Syariah calculators
 - Print button remains functional — users can save as PDF via browser's "Save as PDF" printer option
 - No lint errors introduced
+
+---
+Task ID: 4
+Agent: Main
+Task: Fix proyek CRUD — KPR DP nominal, kavling auto-price, remove type required
+
+Work Log:
+- Changed KPR DP from percentage to nominal rupiah across admin proyek page
+  - KPR TagInput suffix removed "%", placeholder changed to "Contoh: 50000000"
+  - KPR grid row labels changed from "{dp}%" to "Rp {formatRupiahShort(dp)}"
+  - KPR grid header changed to "DP (Rp) ↓ / Tenor →"
+  - Added formatRupiahShort helper (50000000 → "50 jt")
+- Added kavling-specific "Harga Tanah per m²" field
+  - Shows only when category is "kavling"
+  - Auto-calculates property price = landArea × landPricePerSqm / 1_000_000
+  - Harga field becomes read-only when category is kavling
+  - Badge shows calculated price in real-time
+- Removed required asterisk from "Tipe (LB/LT)" field
+- Removed type validation from handleSave
+- Updated Prisma schema: added `landPricePerSqm Float @default(0)` to Property
+- Updated API routes (POST + PUT) to handle landPricePerSqm
+- Updated public page.tsx calculator:
+  - KPR DP calculation uses nominal (dpNum / 1_000_000) instead of percentage
+  - KPR DP display shows "Rp X jt" instead of "X%"
+  - KPR DP buttons show nominal values
+  - KPR DP slider step adjusted for nominal ranges
+  - Fallback defaults changed to nominal [50jt, 100jt, 150jt, 200jt]
+
+Stage Summary:
+- KPR DP in admin grid is now nominal rupiah (consistent with KPR calculator)
+- Kavling properties can set harga tanah per m² with auto-price calculation
+- Tipe (LB/LT) is no longer required
+- Schema updated with landPricePerSqm field
+- Public calculator correctly handles both percentage (Syariah) and nominal (KPR) DP
