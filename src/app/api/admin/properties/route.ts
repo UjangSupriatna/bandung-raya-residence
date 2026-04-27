@@ -58,7 +58,7 @@ export async function POST(req: Request) {
       status, description, features, images, isFeatured,
       tag, installment, financingTypes, dpOptions, tenorOptions, installments,
       kprDpOptions, kprTenorOptions, kprInstallments,
-      syariahMargin,
+      syariahMargin, kprInterestRate, kprInterestType,
     } = body;
 
     if (!name || !slug || !type || !category || !price) {
@@ -96,6 +96,8 @@ export async function POST(req: Request) {
         kprDpOptions: kprDpOptions || "[0,10,15,20,25,30]",
         kprTenorOptions: kprTenorOptions || "[5,10,15,20,25]",
         kprInstallments: kprInstallments || "{}",
+        kprInterestRate: kprInterestRate !== undefined ? parseFloat(kprInterestRate) : 7.5,
+        kprInterestType: kprInterestType || "annuity",
         isFeatured: !!isFeatured,
       },
     });

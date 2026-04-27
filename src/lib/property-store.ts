@@ -27,6 +27,8 @@ export interface Property {
   kprDpOptions: number[];
   kprTenorOptions: number[];
   kprInstallments: Record<string, Record<string, number>>;
+  kprInterestRate: number;
+  kprInterestType: string;
   isFeatured: boolean;
   createdAt: string;
   updatedAt: string;

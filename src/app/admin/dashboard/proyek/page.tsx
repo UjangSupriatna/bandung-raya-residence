@@ -82,6 +82,8 @@ interface Property {
   kprDpOptions: string;
   kprTenorOptions: string;
   kprInstallments: string;
+  kprInterestRate: number;
+  kprInterestType: string;
   isFeatured: boolean;
   createdAt: string;
 }
@@ -525,7 +527,7 @@ function KprAutoGrid({
               {tenorList.map((t) => (
                 <th key={t} className="text-[10px] font-semibold text-gray-400 text-center">
                   <span className="inline-flex gap-3">
-                    <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-400" />Flat</span>
+                    <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />Flat</span>
                     <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-red-400" />Anuitas</span>
                   </span>
                 </th>
@@ -544,9 +546,9 @@ function KprAutoGrid({
                   return (
                     <td key={tenor} className="px-1 py-2 text-center">
                       <div className="flex flex-col gap-1">
-                        <div className="bg-blue-50 border border-blue-100 rounded px-1.5 py-1">
-                          <span className="text-[11px] font-semibold text-blue-800">{flat > 0 ? flat.toFixed(1) : "—"}</span>
-                          <span className="text-[9px] text-blue-400 ml-0.5">jt</span>
+                        <div className="bg-yellow-50 border border-yellow-100 rounded px-1.5 py-1">
+                          <span className="text-[11px] font-semibold text-yellow-800">{flat > 0 ? flat.toFixed(1) : "—"}</span>
+                          <span className="text-[9px] text-yellow-500 ml-0.5">jt</span>
                         </div>
                         <div className="bg-red-50 border border-red-100 rounded px-1.5 py-1">
                           <span className="text-[11px] font-semibold text-red-800">{annuity > 0 ? annuity.toFixed(1) : "—"}</span>
@@ -689,8 +691,8 @@ export default function ProyekPage() {
       kprDpOptions: parseJSONToCSV(p.kprDpOptions, "1000000,2000000,3000000,4000000,5000000"),
       kprTenorOptions: parseJSONToCSV(p.kprTenorOptions, "5,10,15,20,25"),
       kprInstallments: p.kprInstallments || "{}",
-      kprInterestRate: String((p as any).kprInterestRate ?? "7.5"),
-      kprInterestType: String((p as any).kprInterestType ?? "annuity"),
+      kprInterestRate: String(p.kprInterestRate ?? "7.5"),
+      kprInterestType: String(p.kprInterestType ?? "annuity"),
       landPricePerSqm: String((p as any).landPricePerSqm ?? ""),
     });
     setErrors({});
@@ -1176,7 +1178,7 @@ export default function ProyekPage() {
                       </div>
                     </div>
                     <KprAutoGrid price={parseFloat(form.price) || 0} dpOptions={form.kprDpOptions} tenorOptions={form.kprTenorOptions} interestRate={parseFloat(form.kprInterestRate) || undefined} />
-                    <p className="text-[11px] text-gray-400">Cicilan <strong>KPR Bank</strong> — tampilan <strong>Flat</strong> (biru) &amp; <strong>Anuitas</strong> (merah). Simpan data anuitas.</p>
+                    <p className="text-[11px] text-gray-400">Cicilan <strong>KPR Bank</strong> — tampilan <strong>Flat</strong> (kuning) &amp; <strong>Anuitas</strong> (merah). Simpan data anuitas.</p>
                   </div>
                 );
               }
@@ -1240,7 +1242,7 @@ export default function ProyekPage() {
                         </div>
                       </div>
                       <KprAutoGrid price={parseFloat(form.price) || 0} dpOptions={form.kprDpOptions} tenorOptions={form.kprTenorOptions} interestRate={parseFloat(form.kprInterestRate) || undefined} />
-                      <p className="text-[11px] text-gray-400">Cicilan <strong>KPR Bank</strong> — tampilan <strong>Flat</strong> (biru) &amp; <strong>Anuitas</strong> (merah). Simpan data anuitas.</p>
+                      <p className="text-[11px] text-gray-400">Cicilan <strong>KPR Bank</strong> — tampilan <strong>Flat</strong> (kuning) &amp; <strong>Anuitas</strong> (merah). Simpan data anuitas.</p>
                     </TabsContent>
                   </Tabs>
                 </div>

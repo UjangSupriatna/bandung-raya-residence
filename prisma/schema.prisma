@@ -45,6 +45,8 @@ model Property {
   kprDpOptions     String   @default("[0,10,15,20,25,30]")
   kprTenorOptions  String   @default("[5,10,15,20,25]")
   kprInstallments  String   @default("{}")
+  kprInterestRate  Float    @default(7.5)
+  kprInterestType  String   @default("annuity")
   isFeatured       Boolean  @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt

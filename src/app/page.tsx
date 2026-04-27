@@ -2067,9 +2067,10 @@ function CalculatorSection() {
     // Try from saved KPR grid first (key is DP nominal as string)
     const saved = prop.kprInstallments?.[String(dpNum)]?.[String(tenorNum)];
     if (saved && saved > 0) return saved;
-    // Fallback: annuity formula with 7.5% p.a.
+    // Fallback: annuity formula with saved interest rate
+    const rate = (prop.kprInterestRate ?? 7.5) / 100;
     const loanRupiah = remainingJuta * 1_000_000;
-    const r = 0.075 / 12;
+    const r = rate / 12;
     const n = tenorNum * 12;
     if (loanRupiah <= 0 || r === 0 || n === 0) return 0;
     return (loanRupiah * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1) / 1_000_000;
@@ -2325,7 +2326,7 @@ function CalculatorSection() {
                   <p className={`text-xs flex items-center gap-1.5 ${effectiveFinType === "syariah" ? "text-amber-700" : "text-blue-700"}`}>
                     {effectiveFinType === "syariah"
                       ? <><Shield className="w-3.5 h-3.5" /> Skema Syariah — tanpa riba, tanpa denda, tanpa penalti. Cicilan flat per bulan.</>
-                      : <><Percent className="w-3.5 h-3.5" /> Simulasi KPR Bank — bunga fluktuatif. {prop?.kprInstallments?.[dpNum]?.[tenorNum] ? 'Data dari admin.' : 'Estimasi bunga eff. 7.5% p.a.'}</>}
+                      : <><Percent className="w-3.5 h-3.5" /> Simulasi KPR Bank — bunga fluktuatif. {prop?.kprInstallments?.[dpNum]?.[tenorNum] ? 'Data dari admin.' : `Estimasi bunga eff. ${prop?.kprInterestRate ?? 7.5}% p.a.`}</>}
                   </p>
                 </div>
               </CardContent>
@@ -2346,7 +2347,7 @@ function CalculatorSection() {
                     /bulan ({isFlat ? "flat" : "annuity"})
                   </p>
                   <Badge className="mt-3 bg-yellow-500/20 text-yellow-300 border-yellow-500/30 text-xs">
-                    {effectiveFinType === "syariah" ? "Otomatis dari margin" : prop?.kprInstallments?.[dpNum]?.[tenorNum] ? "Data dari admin" : `Estimasi 7.5% p.a.`}
+                    {effectiveFinType === "syariah" ? "Otomatis dari margin" : prop?.kprInstallments?.[dpNum]?.[tenorNum] ? "Data dari admin" : `Estimasi ${prop?.kprInterestRate ?? 7.5}% p.a.`}
                   </Badge>
                 </div>
 
