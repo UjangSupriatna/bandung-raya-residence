@@ -690,14 +690,45 @@ function TentangKamiKeunggulanSection() {
 
 // Get cheapest KPR installment, preferring longest tenor
 function getCheapestKprInstallment(property: Property): { amount: number; dp: number; tenor: number } | null {
-  if (!property.kprInstallments) return null;
+  // Check if property supports KPR
+  const finTypes = property.financingTypes ?? ["syariah", "kpr"];
+  if (!finTypes.includes("kpr")) return null;
+
   let best: { amount: number; dp: number; tenor: number } | null = null;
-  for (const dpStr of Object.keys(property.kprInstallments)) {
-    const dp = parseInt(dpStr);
-    const tenorMap = property.kprInstallments[dpStr];
-    for (const tenorStr of Object.keys(tenorMap)) {
-      const tenor = parseInt(tenorStr);
-      const amount = tenorMap[tenorStr];
+
+  // 1. Try from saved KPR installments grid
+  if (property.kprInstallments && typeof property.kprInstallments === "object") {
+    for (const dpStr of Object.keys(property.kprInstallments)) {
+      const dp = parseInt(dpStr);
+      const tenorMap = property.kprInstallments[dpStr];
+      if (!tenorMap || typeof tenorMap !== "object") continue;
+      for (const tenorStr of Object.keys(tenorMap)) {
+        const tenor = parseInt(tenorStr);
+        const amount = tenorMap[tenorStr];
+        if (amount <= 0) continue;
+        if (!best || amount < best.amount || (amount === best.amount && tenor > best.tenor)) {
+          best = { amount, dp, tenor };
+        }
+      }
+    }
+    if (best) return best;
+  }
+
+  // 2. Calculate on-the-fly using annuity formula with saved interest rate
+  const rate = (property.kprInterestRate ?? 7.5) / 100;
+  const dpOptions = property.kprDpOptions ?? [1000000, 2000000, 3000000, 4000000, 5000000];
+  const tenorOptions = property.kprTenorOptions ?? [5, 10, 15, 20, 25];
+
+  if (rate <= 0) return null;
+
+  for (const dp of dpOptions) {
+    const loanRupiah = property.price * 1_000_000 - dp;
+    if (loanRupiah <= 0) continue;
+    const r = rate / 12;
+    for (const tenor of tenorOptions) {
+      const n = tenor * 12;
+      if (r === 0 || n === 0) continue;
+      const amount = (loanRupiah * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1) / 1_000_000;
       if (amount <= 0) continue;
       if (!best || amount < best.amount || (amount === best.amount && tenor > best.tenor)) {
         best = { amount, dp, tenor };
@@ -723,12 +754,18 @@ function CompactPropertyCard({
   return (
     <FadeIn className="h-full">
       <Card className="group h-full overflow-hidden border-0 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 cursor-pointer" onClick={() => onSelect(property)}>
-        <div className="relative h-40 overflow-hidden">
-          <img
-            src={property.image}
-            alt={property.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          />
+        <div className="relative h-40 overflow-hidden bg-gray-200">
+          {property.image ? (
+            <img
+              src={property.image}
+              alt={property.name}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-gray-400">
+              <Home className="w-10 h-10" />
+            </div>
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
           <div className="absolute top-3 left-3 flex gap-1.5">
             <Badge className="bg-red-600 text-white border-0 shadow-lg text-xs">
@@ -1345,12 +1382,18 @@ function PropertyCard({
     <FadeIn className="h-full">
       <Card className="group h-full overflow-hidden border-0 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
         {/* Image */}
-        <div className="relative h-52 overflow-hidden">
-          <img
-            src={property.image}
-            alt={property.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          />
+        <div className="relative h-52 overflow-hidden bg-gray-200">
+          {property.image ? (
+            <img
+              src={property.image}
+              alt={property.name}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-gray-400">
+              <Home className="w-12 h-12" />
+            </div>
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
           <div className="absolute top-3 left-3 flex gap-1.5">
             {property.tag && (
@@ -1383,9 +1426,11 @@ function PropertyCard({
             <Badge variant="secondary" className="bg-red-50 text-red-700 text-xs font-semibold">
               {CATEGORY_LABELS[property.category as PropertyCategory] || property.category}
             </Badge>
-            <Badge variant="secondary" className="bg-gray-100 text-gray-600 text-xs font-semibold">
-              {property.type}
-            </Badge>
+            {property.category !== "kavling" && property.type && (
+              <Badge variant="secondary" className="bg-gray-100 text-gray-600 text-xs font-semibold">
+                {property.type}
+              </Badge>
+            )}
           </div>
 
           <h3 className="font-bold text-base text-gray-900 mb-1 group-hover:text-red-700 transition-colors line-clamp-1">
@@ -1399,25 +1444,38 @@ function PropertyCard({
             </span>
           </div>
 
-          {/* Spec pills: LT, LB, KT, KM */}
-          <div className="grid grid-cols-4 gap-2 mb-3">
-            <div className="text-center p-2 bg-gray-50 rounded-lg">
-              <p className="text-[10px] text-gray-400">LB</p>
-              <p className="text-xs font-bold text-gray-700">{property.buildingArea}<span className="text-[10px] font-normal"> m²</span></p>
+          {/* Spec pills: kavling shows LT + price/m²; non-kavling shows LT, LB, KT, KM */}
+          {property.category === "kavling" ? (
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <div className="text-center p-2 bg-yellow-50 rounded-lg">
+                <p className="text-[10px] text-yellow-600">LT</p>
+                <p className="text-xs font-bold text-gray-700">{property.landArea}<span className="text-[10px] font-normal"> m²</span></p>
+              </div>
+              <div className="text-center p-2 bg-yellow-50 rounded-lg">
+                <p className="text-[10px] text-yellow-600">Harga/m²</p>
+                <p className="text-xs font-bold text-gray-700">{property.landArea > 0 ? new Intl.NumberFormat("id-ID").format(Math.round(property.price * 1_000_000 / property.landArea)) : "-"}</p>
+              </div>
             </div>
-            <div className="text-center p-2 bg-gray-50 rounded-lg">
-              <p className="text-[10px] text-gray-400">LT</p>
-              <p className="text-xs font-bold text-gray-700">{property.landArea}<span className="text-[10px] font-normal"> m²</span></p>
+          ) : (
+            <div className="grid grid-cols-4 gap-2 mb-3">
+              <div className="text-center p-2 bg-gray-50 rounded-lg">
+                <p className="text-[10px] text-gray-400">LB</p>
+                <p className="text-xs font-bold text-gray-700">{property.buildingArea}<span className="text-[10px] font-normal"> m²</span></p>
+              </div>
+              <div className="text-center p-2 bg-gray-50 rounded-lg">
+                <p className="text-[10px] text-gray-400">LT</p>
+                <p className="text-xs font-bold text-gray-700">{property.landArea}<span className="text-[10px] font-normal"> m²</span></p>
+              </div>
+              <div className="text-center p-2 bg-gray-50 rounded-lg">
+                <p className="text-[10px] text-gray-400">KT</p>
+                <p className="text-xs font-bold text-gray-700">{property.bedrooms}</p>
+              </div>
+              <div className="text-center p-2 bg-gray-50 rounded-lg">
+                <p className="text-[10px] text-gray-400">KM</p>
+                <p className="text-xs font-bold text-gray-700">{property.bathrooms}</p>
+              </div>
             </div>
-            <div className="text-center p-2 bg-gray-50 rounded-lg">
-              <p className="text-[10px] text-gray-400">KT</p>
-              <p className="text-xs font-bold text-gray-700">{property.bedrooms}</p>
-            </div>
-            <div className="text-center p-2 bg-gray-50 rounded-lg">
-              <p className="text-[10px] text-gray-400">KM</p>
-              <p className="text-xs font-bold text-gray-700">{property.bathrooms}</p>
-            </div>
-          </div>
+          )}
 
           {/* Features */}
           {(() => {
@@ -1754,16 +1812,22 @@ function PropertyGallery({
         onClick={() => setLightboxOpen(true)}
       >
         <AnimatePresence mode="wait">
-          <motion.img
-            key={activeImg}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            src={images[activeImg]}
-            alt={`${name} - Foto ${activeImg + 1}`}
-            className="w-full h-full object-cover"
-          />
+          {images[activeImg] ? (
+            <motion.img
+              key={activeImg}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              src={images[activeImg]}
+              alt={`${name} - Foto ${activeImg + 1}`}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400">
+              <Home className="w-12 h-12" />
+            </div>
+          )}
         </AnimatePresence>
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
         <div className="absolute top-3 left-3 z-10 w-9 h-9 flex items-center justify-center rounded-full bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm">
@@ -1790,15 +1854,16 @@ function PropertyGallery({
 
       {images.length > 1 && (
         <div className="flex gap-2 p-3 bg-gray-50 overflow-x-auto">
-          {images.map((img, idx) => (
+          {images.filter(Boolean).map((img, idx) => (
             <button
               key={idx}
               onClick={() => {
-                setActiveImg(idx);
+                const realIdx = images.indexOf(img);
+                setActiveImg(realIdx);
                 setLightboxOpen(true);
               }}
               className={`flex-shrink-0 w-20 h-14 rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
-                activeImg === idx
+                activeImg === images.indexOf(img)
                   ? "border-red-600 shadow-md shadow-red-200"
                   : "border-transparent opacity-60 hover:opacity-100"
               }`}
