@@ -716,6 +716,7 @@ function CompactPropertyCard({
   property: Property;
   onSelect: (p: Property) => void;
 }) {
+  const finTypes = property.financingTypes ?? ["syariah", "kpr"];
   // Get cheapest KPR installment (longest tenor preferred)
   const bestKpr = getCheapestKprInstallment(property);
 
@@ -1336,6 +1337,7 @@ function PropertyCard({
   property: Property;
   onSelect: (p: Property) => void;
 }) {
+  const finTypes = property.financingTypes ?? ["syariah", "kpr"];
   // Get cheapest KPR installment (longest tenor preferred)
   const bestKpr = getCheapestKprInstallment(property);
 
