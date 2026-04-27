@@ -118,7 +118,7 @@ const emptyForm: FormState = {
   image: "", features: "",
   dpOptions: "30,35,40,45,50", tenorOptions: "1,2,3,4,5",
   syariahMargin: "15",
-  kprDpOptions: "0,50000000,100000000,150000000,200000000,287500000", kprTenorOptions: "5,10,15,20,25", kprInstallments: "{}",
+  kprDpOptions: "1000000,2000000,3000000,4000000,5000000", kprTenorOptions: "5,10,15,20,25", kprInstallments: "{}",
   landPricePerSqm: "",
 };
 
@@ -567,7 +567,7 @@ export default function ProyekPage() {
       dpOptions: parseJSONToCSV(p.dpOptions, "30,35,40,45,50"),
       tenorOptions: parseJSONToCSV(p.tenorOptions, "1,2,3,4,5"),
       syariahMargin: String(p.syariahMargin ?? 15),
-      kprDpOptions: parseJSONToCSV(p.kprDpOptions, "0,10,15,20,25,30"),
+      kprDpOptions: parseJSONToCSV(p.kprDpOptions, "1000000,2000000,3000000,4000000,5000000"),
       kprTenorOptions: parseJSONToCSV(p.kprTenorOptions, "5,10,15,20,25"),
       kprInstallments: p.kprInstallments || "{}",
       landPricePerSqm: String((p as any).landPricePerSqm ?? ""),
