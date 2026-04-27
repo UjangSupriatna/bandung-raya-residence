@@ -2213,23 +2213,36 @@ function CalculatorSection() {
                     Uang Muka (DP): {formatDpLabel(dpNum)}
                   </Label>
                   {isKpr ? (
-                    // KPR: button-style DP selection (nominal rupiah)
-                    <div className="flex flex-wrap gap-2">
-                      {dpOptions.map((opt) => (
-                        <button
-                          key={opt}
-                          type="button"
-                          onClick={() => setDp(String(opt))}
-                          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all duration-200 ${
-                            dpNum === opt
-                              ? "bg-gradient-to-r from-red-600 to-red-700 text-white shadow-md shadow-red-200"
-                              : "bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-600"
-                          }`}
-                        >
-                          Rp {formatRpShort(opt)}
-                        </button>
-                      ))}
-                    </div>
+                    // KPR: slider DP selection (nominal rupiah)
+                    <>
+                      <input
+                        type="range"
+                        min={dpMin}
+                        max={dpMax}
+                        step={dpOptions.length > 1 ? (dpOptions[1] - dpOptions[0]) : 1000000}
+                        value={dp}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value);
+                          const closest = dpOptions.reduce((a, b) =>
+                            Math.abs(b - val) < Math.abs(a - val) ? b : a
+                          );
+                          setDp(String(closest));
+                        }}
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-red-600"
+                      />
+                      <div className="flex justify-between text-xs text-gray-400 mt-1">
+                        {dpOptions.map((opt) => (
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() => setDp(String(opt))}
+                            className={`${dpNum === opt ? "text-red-600 font-bold" : "hover:text-gray-600"} transition-colors`}
+                          >
+                            Rp {formatRpShort(opt)}
+                          </button>
+                        ))}
+                      </div>
+                    </>
                   ) : (
                     // Syariah: slider DP (percentage)
                     <>
