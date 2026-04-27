@@ -450,6 +450,96 @@ function SyariahAutoGrid({
   );
 }
 
+// ──── KPR Auto-Calculated Grid (Annuity) ────
+function KprAutoGrid({
+  price,
+  dpOptions,
+  tenorOptions,
+  interestRate,
+}: {
+  price: number;
+  dpOptions: string;
+  tenorOptions: string;
+  interestRate?: number;
+}) {
+  const dpList = parseNumberList(dpOptions);
+  const tenorList = parseNumberList(tenorOptions);
+  const rate = (interestRate ?? 7.5) / 100 / 12; // monthly interest rate
+
+  const calcMonthly = (dpRupiah: number, tenor: number): number => {
+    if (price <= 0 || tenor <= 0) return 0;
+    const priceRupiah = price * 1_000_000; // price in juta -> rupiah
+    const loanAmount = priceRupiah - dpRupiah;
+    if (loanAmount <= 0) return 0;
+    const n = tenor * 12;
+    if (rate <= 0 || n <= 0) return 0;
+    return (loanAmount * rate * Math.pow(1 + rate, n)) / (Math.pow(1 + rate, n) - 1) / 1_000_000; // result in juta
+  };
+
+  if (!price || price <= 0) {
+    return (
+      <div className="text-sm text-gray-400 bg-gray-50 rounded-lg p-4 text-center">
+        Masukkan harga properti terlebih dahulu untuk melihat perhitungan otomatis
+      </div>
+    );
+  }
+
+  if (dpList.length === 0 || tenorList.length === 0) {
+    return (
+      <div className="text-sm text-gray-400 bg-gray-50 rounded-lg p-4 text-center">
+        Isi DP Options dan Tenor Options terlebih dahulu
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="overflow-x-auto rounded-lg border border-gray-200">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-gradient-to-r from-red-50 to-orange-50">
+              <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 text-left border-r border-gray-200 min-w-[90px]">
+                DP (Rp) ↓ / Tenor →
+              </th>
+              {tenorList.map((t) => (
+                <th key={t} className="px-2 py-2.5 text-xs font-semibold text-gray-600 text-center min-w-[85px]">
+                  {t} thn
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {dpList.map((dp) => (
+              <tr key={dp} className="border-t border-gray-100 hover:bg-red-50/30 transition-colors">
+                <td className="px-3 py-2 font-semibold text-gray-700 text-xs border-r border-gray-200 bg-gray-50/80">
+                  Rp {formatRupiahShort(dp)}
+                </td>
+                {tenorList.map((tenor) => {
+                  const monthly = calcMonthly(dp, tenor);
+                  return (
+                    <td key={tenor} className="px-2 py-2 text-center">
+                      <div className="bg-red-50 border border-red-100 rounded-md px-2 py-1.5">
+                        <span className="text-sm font-semibold text-gray-800">
+                          {monthly > 0 ? monthly.toFixed(1) : "—"}
+                        </span>
+                        <span className="text-[10px] text-gray-400 ml-0.5">jt</span>
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
+        <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-400" />
+        Otomatis dihitung — Harga <strong>Rp {price.toFixed(0)}jt</strong>, bunga eff. <strong>{interestRate ?? 7.5}% p.a.</strong>, angsuran annuity per bulan
+      </div>
+    </div>
+  );
+}
+
 // ──── Tag Chip Input ────
 function TagInput({
   values,
@@ -621,6 +711,25 @@ export default function ProyekPage() {
     // Convert TagInput CSV strings to JSON arrays for dpOptions/tenorOptions
     const csvToJSON = (csv: string) => JSON.stringify(csv.split(",").map((v) => parseInt(v.trim())).filter((n) => !isNaN(n)));
 
+    // Auto-calculate KPR installments grid (annuity 7.5% p.a.)
+    const kprDpList = form.kprDpOptions.split(",").map((v) => parseInt(v.trim())).filter((n) => !isNaN(n) && n >= 0);
+    const kprTenorList = form.kprTenorOptions.split(",").map((v) => parseInt(v.trim())).filter((n) => !isNaN(n) && n > 0);
+    const kprInstallmentsObj: Record<string, Record<string, number>> = {};
+    const priceNum = parseFloat(form.price) || 0;
+    const annualRate = 7.5 / 100 / 12;
+    for (const dp of kprDpList) {
+      const loanAmount = priceNum * 1_000_000 - dp;
+      if (loanAmount <= 0) continue;
+      kprInstallmentsObj[String(dp)] = {};
+      for (const tenor of kprTenorList) {
+        const n = tenor * 12;
+        if (annualRate <= 0 || n <= 0) continue;
+        const monthly = (loanAmount * annualRate * Math.pow(1 + annualRate, n)) / (Math.pow(1 + annualRate, n) - 1) / 1_000_000;
+        kprInstallmentsObj[String(dp)][String(tenor)] = parseFloat(monthly.toFixed(1));
+      }
+    }
+    const kprInstallments = JSON.stringify(kprInstallmentsObj);
+
     setSaving(true);
     try {
       const url = editing ? `/api/admin/properties/${editing.id}` : "/api/admin/properties";
@@ -636,6 +745,7 @@ export default function ProyekPage() {
           tenorOptions: csvToJSON(form.tenorOptions),
           kprDpOptions: csvToJSON(form.kprDpOptions),
           kprTenorOptions: csvToJSON(form.kprTenorOptions),
+          kprInstallments,
         }),
       });
       if (!res.ok) { const err = await res.json(); toast.error(err.error || "Gagal menyimpan"); return; }
@@ -1024,7 +1134,7 @@ export default function ProyekPage() {
                         <TagInput values={form.kprTenorOptions} onChange={(v) => setForm({ ...form, kprTenorOptions: v })} placeholder="Contoh: 10" suffix=" thn" />
                       </div>
                     </div>
-                    <InstallmentGridEditor dpOptions={form.kprDpOptions} tenorOptions={form.kprTenorOptions} installments={form.kprInstallments} onChange={(v) => setForm({ ...form, kprInstallments: v })} />
+                    <KprAutoGrid price={parseFloat(form.price) || 0} dpOptions={form.kprDpOptions} tenorOptions={form.kprTenorOptions} />
                     <p className="text-[11px] text-gray-400">Cicilan <strong>KPR Bank</strong> — dengan bunga fluktuatif, tenor tipikal 5–25 tahun.</p>
                   </div>
                 );
@@ -1080,7 +1190,7 @@ export default function ProyekPage() {
                           <TagInput values={form.kprTenorOptions} onChange={(v) => setForm({ ...form, kprTenorOptions: v })} placeholder="Contoh: 10" suffix=" thn" />
                         </div>
                       </div>
-                      <InstallmentGridEditor dpOptions={form.kprDpOptions} tenorOptions={form.kprTenorOptions} installments={form.kprInstallments} onChange={(v) => setForm({ ...form, kprInstallments: v })} />
+                      <KprAutoGrid price={parseFloat(form.price) || 0} dpOptions={form.kprDpOptions} tenorOptions={form.kprTenorOptions} />
                       <p className="text-[11px] text-gray-400">Cicilan <strong>KPR Bank</strong> — dengan bunga fluktuatif, tenor tipikal 5–25 tahun.</p>
                     </TabsContent>
                   </Tabs>
