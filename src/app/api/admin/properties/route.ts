@@ -61,8 +61,13 @@ export async function POST(req: Request) {
       syariahMargin, kprInterestRate, kprInterestType,
     } = body;
 
-    if (!name || !slug || !type || !category || !price) {
-      return NextResponse.json({ error: "Name, slug, type, category, and price are required" }, { status: 400 });
+    // For kavling, type is optional (will be set to empty string)
+    if (!name || !slug || !category || !price) {
+      return NextResponse.json({ error: "Name, slug, category, and price are required" }, { status: 400 });
+    }
+    // For non-kavling, type is required
+    if (category !== "kavling" && !type) {
+      return NextResponse.json({ error: "Type wajib diisi untuk kategori selain kavling" }, { status: 400 });
     }
 
     const slugExists = await db.property.findUnique({ where: { slug } });
