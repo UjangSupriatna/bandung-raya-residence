@@ -1826,6 +1826,232 @@ function PropertyGallery({
   );
 }
 
+/* ─────────────────────────── DETAIL SIMULASI CICILAN ─────────────────────────── */
+
+function DetailSimulasiCicilan({ property }: { property: Property }) {
+  const { settings: S } = useSettingsStore();
+  const finTypes = property.financingTypes ?? ["syariah", "kpr"];
+  const hasSyariah = finTypes.includes("syariah");
+  const hasKPR = finTypes.includes("kpr");
+
+  const [finType, setFinType] = useState<"syariah" | "kpr">(hasSyariah ? "syariah" : "kpr");
+  const [dp, setDp] = useState(
+    hasSyariah ? String(property.dpOptions?.[0] ?? 30) : String(property.kprDpOptions?.[0] ?? 1000000)
+  );
+  const [tenor, setTenor] = useState(
+    hasSyariah ? String(property.tenorOptions?.[property.tenorOptions.length - 1] ?? 5) : String(property.kprTenorOptions?.[0] ?? 5)
+  );
+
+  if (!hasSyariah && !hasKPR) return null;
+
+  const isKpr = finType === "kpr";
+  const dpNum = parseInt(dp);
+  const tenorNum = parseInt(tenor);
+
+  const dpOptions = isKpr ? (property.kprDpOptions ?? [1000000, 2000000, 3000000, 4000000, 5000000]) : (property.dpOptions ?? [30, 50]);
+  const tenorOptions = isKpr ? (property.kprTenorOptions ?? [5, 10, 15, 20]) : (property.tenorOptions ?? [1, 5]);
+  const dpMin = dpOptions[0];
+  const dpMax = dpOptions[dpOptions.length - 1];
+  const tenorMin = tenorOptions[0];
+  const tenorMax = tenorOptions[tenorOptions.length - 1];
+
+  const formatRp = (n: number) => new Intl.NumberFormat("id-ID").format(Math.round(n));
+  const formatRpShort = (n: number) => {
+    if (n >= 1_000_000_000) return (n / 1_000_000_000).toFixed(1).replace('.0', '') + ' M';
+    if (n >= 1_000_000) return (n / 1_000_000).toFixed(0) + ' jt';
+    if (n >= 1_000) return (n / 1_000).toFixed(0) + ' rb';
+    return String(n);
+  };
+  const formatDpLabel = (val: number) => isKpr ? `Rp ${formatRpShort(val)}` : `${val}%`;
+
+  // DP amount in juta
+  const dpAmountJuta = isKpr ? dpNum / 1_000_000 : property.price * dpNum / 100;
+  const remainingJuta = property.price - dpAmountJuta;
+
+  // Syariah calculation
+  const syariahMonthly = (() => {
+    if (!hasSyariah) return 0;
+    const margin = property.syariahMargin ?? 15;
+    if (property.price <= 0 || margin <= 0 || tenorNum <= 0) return 0;
+    const dpAmt = property.price * 1_000_000 * (dpNum / 100);
+    const sellingPrice = property.price * 1_000_000 * (1 + margin / 100);
+    const loan = sellingPrice - dpAmt;
+    return loan / (tenorNum * 12) / 1_000_000;
+  })();
+
+  // KPR calculation
+  const kprMonthly = (() => {
+    if (!hasKPR) return 0;
+    const saved = property.kprInstallments?.[String(dpNum)]?.[String(tenorNum)];
+    if (saved && saved > 0) return saved;
+    const rate = (property.kprInterestRate ?? 7.5) / 100;
+    const loanRupiah = remainingJuta * 1_000_000;
+    const r = rate / 12;
+    const n = tenorNum * 12;
+    if (loanRupiah <= 0 || r === 0 || n === 0) return 0;
+    return (loanRupiah * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1) / 1_000_000;
+  })();
+
+  const monthly = isKpr ? kprMonthly : syariahMonthly;
+
+  const handleFinTypeChange = (type: "syariah" | "kpr") => {
+    setFinType(type);
+    if (type === "syariah") {
+      const dps = property.dpOptions ?? [30, 50];
+      if (!dps.includes(dpNum)) setDp(String(dps[0]));
+      const tenors = property.tenorOptions ?? [1, 5];
+      if (!tenors.includes(tenorNum)) setTenor(String(tenors[tenors.length - 1]));
+    } else {
+      const dps = property.kprDpOptions ?? [1000000, 2000000, 3000000, 4000000, 5000000];
+      if (!dps.includes(dpNum)) setDp(String(dps[0]));
+      const tenors = property.kprTenorOptions ?? [5, 10, 15, 20];
+      if (!tenors.includes(tenorNum)) setTenor(String(tenors[0]));
+    }
+  };
+
+  return (
+    <div className="mb-5 border border-red-100 rounded-xl overflow-hidden">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-red-600 to-red-700 px-5 py-3.5 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Calculator className="w-5 h-5 text-white" />
+          <span className="text-white font-bold text-sm">Simulasi Cicilan</span>
+        </div>
+        {/* Fin type tabs */}
+        {hasSyariah && hasKPR && (
+          <div className="inline-flex bg-white/20 rounded-lg p-0.5">
+            {(["syariah", "kpr"] as const).map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => handleFinTypeChange(type)}
+                className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${
+                  finType === type
+                    ? "bg-white text-red-700 shadow-sm"
+                    : "text-white/80 hover:text-white"
+                }`}
+              >
+                {type === "syariah" ? "Syariah" : "KPR"}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="p-5 space-y-4">
+        {/* Result */}
+        <div className="text-center py-2">
+          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Cicilan Bulanan</p>
+          <p className="text-3xl font-extrabold text-red-600">
+            Rp {formatRp(monthly * 1_000_000)}
+            <span className="text-sm font-medium text-gray-400 ml-1">/bln</span>
+          </p>
+          <p className="text-[10px] text-gray-400 mt-1">
+            {isKpr
+              ? `KPR ${tenor} thn · DP ${formatDpLabel(dpNum)}`
+              : `Syariah ${tenor} thn · DP ${dpNum}%`}
+          </p>
+        </div>
+
+        {/* DP Slider */}
+        <div>
+          <p className="text-xs font-semibold text-gray-600 mb-1.5">
+            Uang Muka (DP): <span className="text-red-600">{formatDpLabel(dpNum)}</span>
+          </p>
+          <input
+            type="range"
+            min={dpMin}
+            max={dpMax}
+            step={dpOptions.length > 1 ? (dpOptions[1] - dpOptions[0]) : (isKpr ? 1000000 : 5)}
+            value={dp}
+            onChange={(e) => {
+              const val = parseInt(e.target.value);
+              const closest = dpOptions.reduce((a, b) =>
+                Math.abs(b - val) < Math.abs(a - val) ? b : a
+              );
+              setDp(String(closest));
+            }}
+            className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-red-600"
+          />
+          <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+            {dpOptions.map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => setDp(String(opt))}
+                className={`${dpNum === opt ? "text-red-600 font-bold" : "hover:text-gray-600"} transition-colors`}
+              >
+                {formatDpLabel(opt)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Tenor Slider */}
+        <div>
+          <p className="text-xs font-semibold text-gray-600 mb-1.5">
+            Tenor: <span className="text-red-600">{tenor} Tahun</span>
+          </p>
+          <input
+            type="range"
+            min={tenorMin}
+            max={tenorMax}
+            step={1}
+            value={tenor}
+            onChange={(e) => {
+              const val = parseInt(e.target.value);
+              const closest = tenorOptions.reduce((a, b) =>
+                Math.abs(b - val) < Math.abs(a - val) ? b : a
+              );
+              setTenor(String(closest));
+            }}
+            className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-red-600"
+          />
+          <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+            {tenorOptions.map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => setTenor(String(opt))}
+                className={`${tenorNum === opt ? "text-red-600 font-bold" : "hover:text-gray-600"} transition-colors`}
+              >
+                {opt} Thn
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Summary */}
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="bg-gray-50 rounded-lg p-2">
+            <p className="text-[10px] text-gray-400">Harga</p>
+            <p className="text-xs font-bold text-gray-700">{property.price} jt</p>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-2">
+            <p className="text-[10px] text-gray-400">DP</p>
+            <p className="text-xs font-bold text-gray-700">{isKpr ? formatRpShort(dpNum) : `${dpNum}%`}</p>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-2">
+            <p className="text-[10px] text-gray-400">Sisa</p>
+            <p className="text-xs font-bold text-gray-700">{remainingJuta.toFixed(0)} jt</p>
+          </div>
+        </div>
+
+        {/* WA Button */}
+        <a
+          href={`https://wa.me/${S.contact_wa}?text=Halo,%20saya%20tertarik%20simulasi%20cicilan:%0AProperti:%20${encodeURIComponent(property.name)}%0AHarga:%20Rp%20${property.price}%20Juta%0ATipe:%20${isKpr ? "KPR" : "Syariah"}%0ADP:%20${encodeURIComponent(formatDpLabel(dpNum))}%0ATenor:%20${tenor}%20tahun%0ACicilan:%20Rp%20${formatRp(monthly * 1_000_000)}/bulan`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition-colors"
+        >
+          <MessageCircle className="w-4 h-4" />
+          Konsultasi via WhatsApp
+        </a>
+      </div>
+    </div>
+  );
+}
+
 /* ─────────────────────────── PROPERTY DETAIL DIALOG ─────────────────────────── */
 
 function PropertyDetailDialog({
@@ -1964,37 +2190,8 @@ function PropertyDetailDialog({
             );
           })()}
 
-          {/* Simulasi Cicilan — Cheapest KPR (longest tenor) */}
-          {(() => {
-            const best = getCheapestKprInstallment(property);
-            if (!best) return null;
-            const formatRp = (n: number) => new Intl.NumberFormat("id-ID").format(Math.round(n));
-            const monthlyRp = Math.round(best.amount * 1_000_000);
-            return (
-              <div className="mb-5 border border-red-100 rounded-xl overflow-hidden">
-                <div className="bg-gradient-to-r from-red-600 to-red-700 px-5 py-4 flex items-center gap-2">
-                  <Calculator className="w-5 h-5 text-white" />
-                  <span className="text-white font-bold text-sm">Simulasi Cicilan KPR</span>
-                </div>
-                <div className="p-5 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs text-gray-400 uppercase tracking-wider">Cicilan Mulai</p>
-                      <p className="text-2xl font-extrabold text-red-600">Rp {formatRp(monthlyRp)}</p>
-                      <p className="text-xs text-gray-500">/bulan • KPR {best.tenor} tahun</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-gray-400">DP</p>
-                      <p className="text-lg font-bold text-gray-700">Rp {formatRp(best.dp)}</p>
-                    </div>
-                  </div>
-                  <p className="text-[10px] text-gray-400 flex items-center gap-1">
-                    <Percent className="w-3 h-3" /> Cicilan terendah dari tenor terlama — estimasi KPR Bank
-                  </p>
-                </div>
-              </div>
-            );
-          })()}
+          {/* Simulasi Cicilan Calculator */}
+          <DetailSimulasiCicilan property={property} />
 
           {/* CTA Buttons */}
           <div className="flex gap-3">
@@ -2278,49 +2475,39 @@ function CalculatorSection() {
                   )}
                 </div>
 
-                {/* Tenor: slider for Syariah, tab buttons for KPR */}
-                {effectiveFinType === "syariah" ? (
-                  <div>
-                    <Label className="text-sm font-semibold text-gray-700 mb-2 block">
-                      Tenor: {tenor} Tahun
-                    </Label>
-                    <input
-                      type="range"
-                      min={tenorMin}
-                      max={tenorMax}
-                      step={1}
-                      value={tenor}
-                      onChange={(e) => setTenor(e.target.value)}
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-red-600"
-                    />
-                    <div className="flex justify-between text-xs text-gray-400 mt-1">
-                      <span>{tenorMin} Tahun</span>
-                      <span>{tenorMax} Tahun</span>
-                    </div>
+                {/* Tenor: progress bar for both Syariah & KPR */}
+                <div>
+                  <Label className="text-sm font-semibold text-gray-700 mb-2 block">
+                    Tenor{isKpr ? " KPR" : ""}: {tenor} Tahun
+                  </Label>
+                  <input
+                    type="range"
+                    min={tenorMin}
+                    max={tenorMax}
+                    step={1}
+                    value={tenor}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      const closest = tenorOptions.reduce((a, b) =>
+                        Math.abs(b - val) < Math.abs(a - val) ? b : a
+                      );
+                      setTenor(String(closest));
+                    }}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-red-600"
+                  />
+                  <div className="flex justify-between text-xs text-gray-400 mt-1">
+                    {tenorOptions.map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setTenor(String(opt))}
+                        className={`${tenorNum === opt ? "text-red-600 font-bold" : "hover:text-gray-600"} transition-colors`}
+                      >
+                        {opt} Tahun
+                      </button>
+                    ))}
                   </div>
-                ) : (
-                  <div>
-                    <Label className="text-sm font-semibold text-gray-700 mb-2 block">
-                      Tenor KPR: {tenor} Tahun
-                    </Label>
-                    <div className="flex flex-wrap gap-2">
-                      {tenorOptions.map((yr) => (
-                        <button
-                          key={yr}
-                          type="button"
-                          onClick={() => setTenor(String(yr))}
-                          className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${
-                            tenorNum === yr
-                              ? "bg-gradient-to-r from-red-600 to-red-700 text-white shadow-md shadow-red-200"
-                              : "bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-600"
-                          }`}
-                        >
-                          {yr} Tahun
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                </div>
 
                 <div className={`rounded-xl p-4 border ${effectiveFinType === "syariah" ? "bg-amber-50 border-amber-200" : "bg-blue-50 border-blue-200"}`}>
                   <p className={`text-xs flex items-center gap-1.5 ${effectiveFinType === "syariah" ? "text-amber-700" : "text-blue-700"}`}>
