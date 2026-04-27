@@ -117,3 +117,27 @@ Stage Summary:
 - Tipe (LB/LT) is no longer required
 - Schema updated with landPricePerSqm field
 - Public calculator correctly handles both percentage (Syariah) and nominal (KPR) DP
+
+---
+Task ID: 1
+Agent: Main Agent
+Task: Fix flat color to yellow and add kprInterestRate/kprInterestType to database
+
+Work Log:
+- Changed Flat color labels from "biru" to "kuning" in admin proyek page (grid was already yellow)
+- Added kprInterestRate (Float, default 7.5) and kprInterestType (String, default "annuity") to prisma schema
+- Added columns directly to SQLite database via Bun's sqlite module
+- Regenerated Prisma client to include new fields
+- Updated POST /api/admin/properties to accept and save kprInterestRate & kprInterestType
+- Updated PUT /api/admin/properties/[id] to accept and save kprInterestRate & kprInterestType
+- Updated public GET /api/properties to return kprInterestRate & kprInterestType
+- Updated Property interface in property-store.ts to include new fields
+- Updated Property interface in admin proyek page to include new fields (removed `as any` casts)
+- Updated CalculatorSection on home page to use prop.kprInterestRate instead of hardcoded 7.5%
+- Updated info badges on home calculator to show actual rate from property data
+
+Stage Summary:
+- Suku bunga now saves to database correctly (was missing from schema before)
+- Flat indicator color is yellow throughout
+- Public calculator uses the saved interest rate from admin
+- Pushed as commit 76c71c5
