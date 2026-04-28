@@ -56,4 +56,4 @@ server.log
 # database files
 *.db
 *.db-journal
-db/
+db/.env
