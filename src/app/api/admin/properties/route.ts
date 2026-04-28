@@ -59,6 +59,7 @@ export async function POST(req: Request) {
       tag, installment, financingTypes, dpOptions, tenorOptions, installments,
       kprDpOptions, kprTenorOptions, kprInstallments,
       syariahMargin, kprInterestRate, kprInterestType,
+      videoUrl,
     } = body;
 
     // For kavling, type is optional (will be set to empty string)
@@ -103,6 +104,7 @@ export async function POST(req: Request) {
         kprInstallments: kprInstallments || "{}",
         kprInterestRate: kprInterestRate !== undefined ? parseFloat(kprInterestRate) : 7.5,
         kprInterestType: kprInterestType || "annuity",
+        videoUrl: videoUrl || "",
         isFeatured: !!isFeatured,
       },
     });

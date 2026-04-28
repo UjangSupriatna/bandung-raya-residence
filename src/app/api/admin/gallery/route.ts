@@ -42,18 +42,24 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { title, category, image, description, sortOrder } = body;
+    const { title, category, image, description, sortOrder, videoUrl } = body;
 
-    if (!title || !image) {
-      return NextResponse.json({ error: "Title and image are required" }, { status: 400 });
+    if (!title) {
+      return NextResponse.json({ error: "Title is required" }, { status: 400 });
+    }
+
+    // Either image or videoUrl must be provided
+    if (!image && !videoUrl) {
+      return NextResponse.json({ error: "Image or Video URL is required" }, { status: 400 });
     }
 
     const item = await db.galleryItem.create({
       data: {
         title,
         category: category || "",
-        image,
+        image: image || "",
         description: description || "",
+        videoUrl: videoUrl || "",
         sortOrder: parseInt(sortOrder) || 0,
       },
     });

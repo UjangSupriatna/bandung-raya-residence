@@ -32,7 +32,7 @@ model Property {
   landArea         Float    @default(0)
   buildingArea     Float    @default(0)
   status           String   @default("available")
-  description      String   @default("")
+  description      String   @default("") @db.Text
   features         String   @default("[]")
   images           String   @default("[]")
   tag              String   @default("")
@@ -47,6 +47,7 @@ model Property {
   kprInstallments  String   @default("{}")
   kprInterestRate  Float    @default(7.5)
   kprInterestType  String   @default("annuity")
+  videoUrl         String   @default("") @db.Text
   isFeatured       Boolean  @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -85,6 +86,7 @@ model GalleryItem {
   category    String
   image       String   @db.Text
   description String   @default("") @db.Text
+  videoUrl    String   @default("") @db.Text
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

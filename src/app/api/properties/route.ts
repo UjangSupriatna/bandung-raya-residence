@@ -55,6 +55,7 @@ export async function GET(req: Request) {
       kprInstallments: safeParse(p.kprInstallments, {}),
       kprInterestRate: p.kprInterestRate ?? 7.5,
       kprInterestType: p.kprInterestType ?? "annuity",
+      videoUrl: p.videoUrl || "",
       id: p.id,
     }));
 

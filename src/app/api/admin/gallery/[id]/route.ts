@@ -45,7 +45,7 @@ export async function PUT(
     }
 
     const updateData: Record<string, unknown> = {};
-    const fields = ["title", "category", "image", "description"];
+    const fields = ["title", "category", "image", "description", "videoUrl"];
     for (const f of fields) {
       if (body[f] !== undefined) updateData[f] = body[f];
     }

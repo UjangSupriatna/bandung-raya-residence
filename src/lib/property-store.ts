@@ -29,6 +29,7 @@ export interface Property {
   kprInstallments: Record<string, Record<string, number>>;
   kprInterestRate: number;
   kprInterestType: string;
+  videoUrl: string;
   isFeatured: boolean;
   createdAt: string;
   updatedAt: string;

@@ -72,6 +72,7 @@ export async function PUT(
     if (body.kprInstallments !== undefined) updateData.kprInstallments = typeof body.kprInstallments === "string" ? body.kprInstallments : JSON.stringify(body.kprInstallments);
     if (body.kprInterestRate !== undefined) updateData.kprInterestRate = parseFloat(body.kprInterestRate);
     if (body.kprInterestType !== undefined) updateData.kprInterestType = body.kprInterestType;
+    if (body.videoUrl !== undefined) updateData.videoUrl = body.videoUrl;
     if (body.isFeatured !== undefined) updateData.isFeatured = !!body.isFeatured;
 
     const property = await db.property.update({

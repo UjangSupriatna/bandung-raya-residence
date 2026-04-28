@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Pencil, Trash2, Search, Camera, Loader2, AlertCircle, Image as ImageIcon } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Camera, Loader2, AlertCircle, Image as ImageIcon, ExternalLink } from "lucide-react";
 import ImageUpload from "@/components/admin/image-upload";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -49,11 +49,12 @@ interface GalleryItem {
   category: string;
   image: string;
   description: string;
+  videoUrl: string;
   sortOrder: number;
   createdAt: string;
 }
 
-const emptyForm = { title: "", category: "", image: "", description: "", sortOrder: "0" };
+const emptyForm = { title: "", category: "", image: "", description: "", videoUrl: "", sortOrder: "0" };
 
 export default function GalleryPage() {
   const [items, setItems] = useState<GalleryItem[]>([]);
@@ -96,7 +97,7 @@ export default function GalleryPage() {
     setEditing(g);
     setForm({
       title: g.title, category: g.category, image: g.image,
-      description: g.description, sortOrder: String(g.sortOrder),
+      description: g.description, videoUrl: g.videoUrl || "", sortOrder: String(g.sortOrder),
     });
     setErrors({});
     setFormOpen(true);
@@ -118,8 +119,8 @@ export default function GalleryPage() {
     if (!form.title.trim()) {
       newErrors.title = "Judul wajib diisi";
     }
-    if (!form.image.trim()) {
-      newErrors.image = "URL Gambar wajib diisi";
+    if (!form.image.trim() && !form.videoUrl.trim()) {
+      newErrors.image = "URL Gambar atau Video wajib diisi salah satu";
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -160,10 +161,10 @@ export default function GalleryPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Gallery</h1>
-          <p className="text-sm text-gray-500 mt-1">Kelola galeri foto</p>
+          <p className="text-sm text-gray-500 mt-1">Kelola galeri foto dan video</p>
         </div>
         <Button onClick={openCreate} className="bg-red-600 hover:bg-red-700 text-white gap-2">
-          <Plus className="w-4 h-4" /> Tambah Foto
+          <Plus className="w-4 h-4" /> Tambah Gallery
         </Button>
       </div>
 
@@ -212,7 +213,11 @@ export default function GalleryPage() {
                           <span className="text-xs font-mono text-gray-400">{item.sortOrder}</span>
                         </TableCell>
                         <TableCell>
-                          {item.image ? (
+                          {item.videoUrl ? (
+                            <div className="w-14 h-10 rounded-lg bg-red-50 flex items-center justify-center border border-red-200">
+                              <svg className="w-5 h-5 text-red-500" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                            </div>
+                          ) : item.image ? (
                             <div className="relative w-14 h-10">
                               <img
                                 src={item.image}
@@ -314,6 +319,20 @@ export default function GalleryPage() {
             <div className="space-y-2">
               <Label>Deskripsi</Label>
               <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} />
+            </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1">
+                Link Video YouTube
+                <a href="https://www.youtube.com" target="_blank" rel="noopener noreferrer" className="text-red-500 hover:text-red-600">
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </Label>
+              <Input
+                value={form.videoUrl}
+                onChange={(e) => { clearFieldError("image"); setForm({ ...form, videoUrl: e.target.value }); }}
+                placeholder="https://www.youtube.com/watch?v=..."
+              />
+              <p className="text-[10px] text-gray-400">Opsional. Jika diisi, item ini akan tampil sebagai video di tab Gallery.</p>
             </div>
           </div>
           <DialogFooter>

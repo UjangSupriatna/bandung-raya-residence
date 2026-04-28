@@ -6,6 +6,7 @@ export interface GalleryItem {
   category: string;
   image: string;
   description: string;
+  videoUrl: string;
   sortOrder: number;
   createdAt: string;
 }

@@ -688,6 +688,20 @@ function TentangKamiKeunggulanSection() {
 
 /* ─────────────────────────── HELPERS ─────────────────────────── */
 
+// Extract YouTube video ID from various URL formats
+function getYoutubeEmbedUrl(url: string): string | null {
+  if (!url) return null;
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return `https://www.youtube.com/embed/${match[1]}`;
+  }
+  return null;
+}
+
 // Get cheapest KPR installment, preferring longest tenor
 function getCheapestKprInstallment(property: Property): { amount: number; dp: number; tenor: number } | null {
   // Check if property supports KPR
@@ -2248,6 +2262,27 @@ function PropertyDetailDialog({
             </div>
           )}
 
+          {/* Video */}
+          {(() => {
+            const embedUrl = getYoutubeEmbedUrl(property.videoUrl || "");
+            if (!embedUrl) return null;
+            return (
+              <div className="mb-5">
+                <h4 className="font-bold text-gray-900 mb-2">Video Proyek</h4>
+                <p className="text-sm text-gray-500 mb-3">Simak video dokumentasi dan review proyek {property.name} berikut ini.</p>
+                <div className="relative w-full overflow-hidden rounded-xl" style={{ paddingBottom: "56.25%" }}>
+                  <iframe
+                    src={embedUrl}
+                    title={property.name}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                    className="absolute inset-0 w-full h-full rounded-xl"
+                  />
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Features */}
           {(() => {
             let featList: string[] = [];
@@ -3024,25 +3059,36 @@ function ContactSection() {
 function ProyekGallery() {
   const { galleryItems, loading: galleryLoading, fetchGalleryItems } = useGalleryStore();
   const { settings: S } = useSettingsStore();
+  const [activeTab, setActiveTab] = useState<"foto" | "video">("foto");
   const [activeCategory, setActiveCategory] = useState<GalleryCategory>("all");
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [page, setPage] = useState(1);
   const [prevCategory, setPrevCategory] = useState(activeCategory);
+  const [prevTab, setPrevTab] = useState(activeTab);
 
   useEffect(() => { fetchGalleryItems(); }, [fetchGalleryItems]);
 
-  if (prevCategory !== activeCategory) {
+  if (prevCategory !== activeCategory || prevTab !== activeTab) {
     setPrevCategory(activeCategory);
+    setPrevTab(activeTab);
     setPage(1);
   }
 
-  const filtered = activeCategory === "all"
-    ? galleryItems
-    : galleryItems.filter((img) => img.category === activeCategory);
+  // Separate items into foto and video
+  const photos = galleryItems.filter((item) => !item.videoUrl && item.image);
+  const videos = galleryItems.filter((item) => !!item.videoUrl);
 
-  const totalPages = Math.ceil(filtered.length / GALLERY_PER_PAGE);
-  const paged = filtered.slice((page - 1) * GALLERY_PER_PAGE, page * GALLERY_PER_PAGE);
+  // Filter by category
+  const filterByCategory = (items: typeof galleryItems) =>
+    activeCategory === "all" ? items : items.filter((img) => img.category === activeCategory);
+
+  const filteredPhotos = filterByCategory(photos);
+  const filteredVideos = filterByCategory(videos);
+
+  const currentItems = activeTab === "foto" ? filteredPhotos : filteredVideos;
+  const totalPages = Math.ceil(currentItems.length / GALLERY_PER_PAGE);
+  const paged = currentItems.slice((page - 1) * GALLERY_PER_PAGE, page * GALLERY_PER_PAGE);
 
   if (galleryLoading) {
     return (
@@ -3077,8 +3123,42 @@ function ProyekGallery() {
             Dokumentasi <span className="text-red-600">Proyek</span> Kami
           </h2>
           <p className="text-gray-500 max-w-2xl mx-auto text-lg">
-            Lihat foto-foto proyek dan lingkungan {S.company_name}.
+            Lihat foto dan video proyek serta lingkungan {S.company_name}.
           </p>
+        </FadeIn>
+
+        {/* Foto / Video Tab Toggle */}
+        <FadeIn delay={0.05} className="flex justify-center mb-6">
+          <div className="inline-flex bg-gray-100 rounded-xl p-1 gap-1">
+            <button
+              onClick={() => setActiveTab("foto")}
+              className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                activeTab === "foto"
+                  ? "bg-white text-red-700 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              <span className="flex items-center gap-1.5">
+                <Camera className="w-4 h-4" />
+                Foto
+                <span className="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-full">{filteredPhotos.length}</span>
+              </span>
+            </button>
+            <button
+              onClick={() => setActiveTab("video")}
+              className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                activeTab === "video"
+                  ? "bg-white text-red-700 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              <span className="flex items-center gap-1.5">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                Video
+                <span className="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-full">{filteredVideos.length}</span>
+              </span>
+            </button>
+          </div>
         </FadeIn>
 
         <FadeIn delay={0.1} className="flex justify-center mb-10">
@@ -3097,50 +3177,109 @@ function ProyekGallery() {
           </Select>
         </FadeIn>
 
-        {paged.length === 0 ? (
-          <div className="text-center py-16">
-            <Camera className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-400 text-lg">Belum ada foto untuk kategori ini.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {paged.map((img, i) => (
-              <FadeIn key={`${img.id}-${activeCategory}-${page}`} delay={i * 0.05}>
-                <div
-                  className="relative group cursor-pointer overflow-hidden rounded-xl shadow-md hover:shadow-xl transition-all"
-                  onClick={() => { setLightboxIndex((page - 1) * GALLERY_PER_PAGE + i); setLightboxOpen(true); }}
-                >
-                  <div className="aspect-[4/3] overflow-hidden">
-                    <img
-                      src={img.image}
-                      alt={img.title}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
-                  </div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="absolute bottom-3 left-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <p className="text-white text-sm font-bold">{img.title}</p>
-                    <Badge className="mt-1 bg-white/20 text-white border-0 backdrop-blur-sm text-xs">
-                      {CATEGORY_LABELS[img.category] || img.category}
-                    </Badge>
-                  </div>
-                </div>
-              </FadeIn>
-            ))}
-          </div>
+        {/* Foto Tab Content */}
+        {activeTab === "foto" && (
+          <>
+            {paged.length === 0 ? (
+              <div className="text-center py-16">
+                <Camera className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-400 text-lg">Belum ada foto untuk kategori ini.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {paged.map((img, i) => (
+                  <FadeIn key={`${img.id}-${activeCategory}-${page}`} delay={i * 0.05}>
+                    <div
+                      className="relative group cursor-pointer overflow-hidden rounded-xl shadow-md hover:shadow-xl transition-all"
+                      onClick={() => { setLightboxIndex((page - 1) * GALLERY_PER_PAGE + i); setLightboxOpen(true); }}
+                    >
+                      <div className="aspect-[4/3] overflow-hidden">
+                        <img
+                          src={img.image}
+                          alt={img.title}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        />
+                      </div>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="absolute bottom-3 left-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <p className="text-white text-sm font-bold">{img.title}</p>
+                        <Badge className="mt-1 bg-white/20 text-white border-0 backdrop-blur-sm text-xs">
+                          {CATEGORY_LABELS[img.category] || img.category}
+                        </Badge>
+                      </div>
+                    </div>
+                  </FadeIn>
+                ))}
+              </div>
+            )}
+            <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+            <AnimatePresence>
+              {lightboxOpen && (
+                <LightboxOverlay
+                  images={filteredPhotos.map((img) => img.image)}
+                  activeIndex={lightboxIndex}
+                  onClose={() => setLightboxOpen(false)}
+                />
+              )}
+            </AnimatePresence>
+          </>
         )}
 
-        <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
-
-        <AnimatePresence>
-          {lightboxOpen && (
-            <LightboxOverlay
-              images={filtered.map((img) => img.image)}
-              activeIndex={lightboxIndex}
-              onClose={() => setLightboxOpen(false)}
-            />
-          )}
-        </AnimatePresence>
+        {/* Video Tab Content */}
+        {activeTab === "video" && (
+          <>
+            {paged.length === 0 ? (
+              <div className="text-center py-16">
+                <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                <p className="text-gray-400 text-lg">Belum ada video untuk kategori ini.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {paged.map((item, i) => {
+                  const embedUrl = getYoutubeEmbedUrl(item.videoUrl);
+                  return (
+                    <FadeIn key={`${item.id}-${activeCategory}-${page}`} delay={i * 0.05}>
+                      <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all overflow-hidden group">
+                        {/* Thumbnail */}
+                        <div className="relative aspect-video overflow-hidden bg-gray-100">
+                          {embedUrl ? (
+                            <iframe
+                              src={embedUrl}
+                              title={item.title}
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                              className="w-full h-full"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Camera className="w-10 h-10 text-gray-300" />
+                            </div>
+                          )}
+                        </div>
+                        {/* Info */}
+                        <div className="p-4">
+                          <h3 className="font-bold text-gray-900 text-sm mb-1 line-clamp-2 group-hover:text-red-700 transition-colors">
+                            {item.title}
+                          </h3>
+                          {item.description && (
+                            <p className="text-xs text-gray-500 line-clamp-2">{item.description}</p>
+                          )}
+                          <div className="mt-2">
+                            <Badge variant="secondary" className="bg-gray-100 text-gray-600 text-[10px]">
+                              {CATEGORY_LABELS[item.category] || item.category}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    </FadeIn>
+                  );
+                })}
+              </div>
+            )}
+            <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+          </>
+        )}
       </div>
     </section>
   );

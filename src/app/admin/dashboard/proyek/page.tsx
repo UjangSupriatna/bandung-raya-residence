@@ -11,6 +11,7 @@ import {
   ImageIcon,
   AlertCircle,
   X,
+  ExternalLink,
 } from "lucide-react";
 import ImageUpload from "@/components/admin/image-upload";
 import { toast } from "sonner";
@@ -84,6 +85,7 @@ interface Property {
   kprInstallments: string;
   kprInterestRate: number;
   kprInterestType: string;
+  videoUrl: string;
   isFeatured: boolean;
   createdAt: string;
 }
@@ -111,6 +113,7 @@ interface FormState {
   kprDpOptions: string; kprTenorOptions: string; kprInstallments: string;
   kprInterestRate: string;
   kprInterestType: string;
+  videoUrl: string;
   landPricePerSqm: string;
 }
 
@@ -125,6 +128,7 @@ const emptyForm: FormState = {
   kprDpOptions: "1000000,2000000,3000000,4000000,5000000", kprTenorOptions: "5,10,15,20,25", kprInstallments: "{}",
   kprInterestRate: "7.5",
   kprInterestType: "annuity",
+  videoUrl: "",
   landPricePerSqm: "",
 };
 
@@ -693,6 +697,7 @@ export default function ProyekPage() {
       kprInstallments: p.kprInstallments || "{}",
       kprInterestRate: String(p.kprInterestRate ?? "7.5"),
       kprInterestType: String(p.kprInterestType ?? "annuity"),
+      videoUrl: String((p as any).videoUrl ?? ""),
       landPricePerSqm: String((p as any).landPricePerSqm ?? ""),
     });
     setErrors({});
@@ -796,6 +801,7 @@ export default function ProyekPage() {
           kprDpOptions: csvToJSON(form.kprDpOptions),
           kprTenorOptions: csvToJSON(form.kprTenorOptions),
           kprInstallments,
+          videoUrl: form.videoUrl,
         }),
       });
       if (!res.ok) { const err = await res.json(); toast.error(err.error || "Gagal menyimpan"); return; }
@@ -1111,6 +1117,16 @@ export default function ProyekPage() {
             <div className="space-y-2">
               <Label>Deskripsi</Label>
               <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} placeholder="Deskripsi proyek..." />
+            </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1">
+                Link Video YouTube
+                <a href="https://www.youtube.com" target="_blank" rel="noopener noreferrer" className="text-red-500 hover:text-red-600">
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </Label>
+              <Input value={form.videoUrl} onChange={(e) => setForm({ ...form, videoUrl: e.target.value })} placeholder="https://www.youtube.com/watch?v=..." />
+              <p className="text-[10px] text-gray-400">Opsional. Video akan tampil di halaman detail proyek.</p>
             </div>
 
             {/* ── Tabel Cicilan ── */}
