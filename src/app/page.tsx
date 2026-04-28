@@ -1136,12 +1136,24 @@ function GalleryPreviewSection() {
   const { galleryItems, loading: galleryLoading, fetchGalleryItems } = useGalleryStore();
   const { settings: S } = useSettingsStore();
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<"foto" | "video">("foto");
 
   useEffect(() => { fetchGalleryItems(); }, [fetchGalleryItems]);
 
-  const previewItems = galleryItems.slice(0, 8);
+  const photos = galleryItems.filter((item) => !item.videoUrl && item.image);
+  const videos = galleryItems.filter((item) => !!item.videoUrl);
 
-  if (galleryLoading || previewItems.length === 0) return null;
+  const hasPhotos = photos.length > 0;
+  const hasVideos = videos.length > 0;
+
+  // Auto-switch tab if current tab has no items
+  useEffect(() => {
+    if (activeTab === "foto" && !hasPhotos && hasVideos) setActiveTab("video");
+  }, [hasPhotos, hasVideos, activeTab]);
+
+  if (galleryLoading || (!hasPhotos && !hasVideos)) return null;
+
+  const previewItems = (activeTab === "foto" ? photos : videos).slice(0, 6);
 
   return (
     <section className="py-20 md:py-28 bg-warm-bg">
@@ -1152,35 +1164,90 @@ function GalleryPreviewSection() {
             Dokumentasi
           </Badge>
           <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">
-            Galeri <span className="text-red-600">Foto</span>
+            Galeri <span className="text-red-600">Proyek</span>
           </h2>
           <p className="text-gray-500 max-w-2xl mx-auto text-lg">
             Dokumentasi proyek dan lingkungan {S.company_name}.
           </p>
         </FadeIn>
+
+        {/* Tab Toggle — only if both exist */}
+        {hasPhotos && hasVideos && (
+          <FadeIn delay={0.05} className="flex justify-center mb-8">
+            <div className="inline-flex bg-gray-100 rounded-xl p-1 gap-1">
+              <button
+                onClick={() => setActiveTab("foto")}
+                className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                  activeTab === "foto"
+                    ? "bg-white text-red-700 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                <span className="flex items-center gap-1.5">
+                  <Camera className="w-4 h-4" />
+                  Foto
+                  <span className="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-full">{photos.length}</span>
+                </span>
+              </button>
+              <button
+                onClick={() => setActiveTab("video")}
+                className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                  activeTab === "video"
+                    ? "bg-white text-red-700 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                <span className="flex items-center gap-1.5">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                  Video
+                  <span className="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-full">{videos.length}</span>
+                </span>
+              </button>
+            </div>
+          </FadeIn>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {previewItems.map((img, i) => (
-            <FadeIn key={img.id} delay={i * 0.05}>
+          {previewItems.map((item, i) => (
+            <FadeIn key={item.id} delay={i * 0.05}>
               <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all overflow-hidden group">
                 {/* Thumbnail */}
                 <div className="relative aspect-video overflow-hidden bg-gray-100">
-                  <img
-                    src={img.image}
-                    alt={img.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
+                  {item.videoUrl ? (() => {
+                    const embedUrl = getYoutubeEmbedUrl(item.videoUrl);
+                    return embedUrl ? (
+                      <iframe
+                        src={embedUrl}
+                        title={item.title}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        className="w-full h-full"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Camera className="w-10 h-10 text-gray-300" />
+                      </div>
+                    );
+                  })() : (
+                    <img
+                      src={item.image}
+                      alt={item.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  )}
                 </div>
                 {/* Info */}
                 <div className="p-4">
                   <h3 className="font-bold text-gray-900 text-sm mb-1 line-clamp-2 group-hover:text-red-700 transition-colors">
-                    {img.title}
+                    {item.title}
                   </h3>
-                  {img.description && (
-                    <p className="text-xs text-gray-500 line-clamp-2">{img.description}</p>
+                  {item.description && (
+                    <p className="text-xs text-gray-500 line-clamp-2">{item.description}</p>
                   )}
                   <div className="mt-2">
                     <Badge variant="secondary" className="bg-gray-100 text-gray-600 text-[10px]">
-                      {CATEGORY_LABELS[img.category] || img.category}
+                      {CATEGORY_LABELS[item.category] || item.category}
                     </Badge>
                   </div>
                 </div>
@@ -1193,7 +1260,7 @@ function GalleryPreviewSection() {
             onClick={() => router.push("/?tab=gallery")}
             className="inline-flex items-center gap-2 px-6 py-3 bg-red-50 text-red-700 font-semibold rounded-xl hover:bg-red-100 transition-colors"
           >
-            Lihat Semua Foto
+            Lihat Semua
             <ArrowRight className="w-4 h-4" />
           </button>
         </FadeIn>
