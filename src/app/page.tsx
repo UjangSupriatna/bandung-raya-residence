@@ -1158,15 +1158,32 @@ function GalleryPreviewSection() {
             Dokumentasi proyek dan lingkungan {S.company_name}.
           </p>
         </FadeIn>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {previewItems.map((img, i) => (
             <FadeIn key={img.id} delay={i * 0.05}>
-              <div className="aspect-[4/3] overflow-hidden rounded-xl shadow-md group cursor-pointer">
-                <img
-                  src={img.image}
-                  alt={img.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
+              <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all overflow-hidden group">
+                {/* Thumbnail */}
+                <div className="relative aspect-video overflow-hidden bg-gray-100">
+                  <img
+                    src={img.image}
+                    alt={img.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                </div>
+                {/* Info */}
+                <div className="p-4">
+                  <h3 className="font-bold text-gray-900 text-sm mb-1 line-clamp-2 group-hover:text-red-700 transition-colors">
+                    {img.title}
+                  </h3>
+                  {img.description && (
+                    <p className="text-xs text-gray-500 line-clamp-2">{img.description}</p>
+                  )}
+                  <div className="mt-2">
+                    <Badge variant="secondary" className="bg-gray-100 text-gray-600 text-[10px]">
+                      {CATEGORY_LABELS[img.category] || img.category}
+                    </Badge>
+                  </div>
+                </div>
               </div>
             </FadeIn>
           ))}
@@ -3186,26 +3203,31 @@ function ProyekGallery() {
                 <p className="text-gray-400 text-lg">Belum ada foto untuk kategori ini.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {paged.map((img, i) => (
                   <FadeIn key={`${img.id}-${activeCategory}-${page}`} delay={i * 0.05}>
-                    <div
-                      className="relative group cursor-pointer overflow-hidden rounded-xl shadow-md hover:shadow-xl transition-all"
-                      onClick={() => { setLightboxIndex((page - 1) * GALLERY_PER_PAGE + i); setLightboxOpen(true); }}
-                    >
-                      <div className="aspect-[4/3] overflow-hidden">
+                    <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all overflow-hidden group cursor-pointer" onClick={() => { setLightboxIndex((page - 1) * GALLERY_PER_PAGE + i); setLightboxOpen(true); }}>
+                      {/* Thumbnail */}
+                      <div className="relative aspect-video overflow-hidden bg-gray-100">
                         <img
                           src={img.image}
                           alt={img.title}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />
                       </div>
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <div className="absolute bottom-3 left-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <p className="text-white text-sm font-bold">{img.title}</p>
-                        <Badge className="mt-1 bg-white/20 text-white border-0 backdrop-blur-sm text-xs">
-                          {CATEGORY_LABELS[img.category] || img.category}
-                        </Badge>
+                      {/* Info */}
+                      <div className="p-4">
+                        <h3 className="font-bold text-gray-900 text-sm mb-1 line-clamp-2 group-hover:text-red-700 transition-colors">
+                          {img.title}
+                        </h3>
+                        {img.description && (
+                          <p className="text-xs text-gray-500 line-clamp-2">{img.description}</p>
+                        )}
+                        <div className="mt-2">
+                          <Badge variant="secondary" className="bg-gray-100 text-gray-600 text-[10px]">
+                            {CATEGORY_LABELS[img.category] || img.category}
+                          </Badge>
+                        </div>
                       </div>
                     </div>
                   </FadeIn>
