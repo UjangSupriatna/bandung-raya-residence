@@ -1,114 +1,126 @@
-import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
 import { existsSync } from "fs";
+import path from "path";
+import sharp from "sharp";
 
-// Maximum output file size (default 300KB, configurable via query param)
-const DEFAULT_MAX_KB = 300;
+export const runtime = "nodejs";
 
-export async function POST(req: Request) {
+const MAX_SIZE = 300 * 1024; // 300KB
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads");
+const ALLOWED_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/bmp",
+  "image/tiff",
+];
+
+function generateFilename(ext: string): string {
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 8);
+  return `${timestamp}-${random}.${ext}`;
+}
+
+async function compressImage(buffer: Buffer, mimeType: string): Promise<Buffer> {
+  const format = mimeType === "image/png" ? "png" : mimeType === "image/webp" ? "webp" : "jpeg";
+
+  // Try initial compression
+  let result = await sharp(buffer)
+    .rotate()
+    .resize(1920, null, { withoutEnlargement: true, fit: "inside" })
+    [format]({ quality: 85, mozjpeg: format === "jpeg" })
+    .toBuffer();
+
+  // If still too large, progressively reduce quality
+  if (result.length > MAX_SIZE) {
+    for (let q = 70; q >= 20; q -= 10) {
+      result = await sharp(buffer)
+        .rotate()
+        .resize(1920, null, { withoutEnlargement: true, fit: "inside" })
+        [format]({ quality: q, mozjpeg: format === "jpeg" })
+        .toBuffer();
+      if (result.length <= MAX_SIZE) break;
+    }
+  }
+
+  // If still too large, resize dimensions
+  if (result.length > MAX_SIZE) {
+    for (let width = 1600; width >= 600; width -= 200) {
+      result = await sharp(buffer)
+        .rotate()
+        .resize(width, null, { withoutEnlargement: true, fit: "inside" })
+        [format]({ quality: 60, mozjpeg: format === "jpeg" })
+        .toBuffer();
+      if (result.length <= MAX_SIZE) break;
+    }
+  }
+
+  // Final fallback: force small
+  if (result.length > MAX_SIZE) {
+    result = await sharp(buffer)
+      .rotate()
+      .resize(800, 600, { withoutEnlargement: true, fit: "inside" })
+      .jpeg({ quality: 50 })
+      .toBuffer();
+  }
+
+  return result;
+}
+
+export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!existsSync(UPLOAD_DIR)) {
+      await mkdir(UPLOAD_DIR, { recursive: true });
     }
 
-    const formData = await req.formData();
+    const formData = await request.formData();
     const file = formData.get("file") as File | null;
 
     if (!file) {
       return NextResponse.json({ error: "File tidak ditemukan" }, { status: 400 });
     }
 
-    if (!file.type.startsWith("image/")) {
-      return NextResponse.json({ error: "Hanya file gambar yang diperbolehkan" }, { status: 400 });
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      return NextResponse.json(
+        { error: `Tipe file tidak didukung: ${file.type}` },
+        { status: 400 }
+      );
     }
-
-    const maxKB = parseInt(new URL(req.url).searchParams.get("maxKB") || String(DEFAULT_MAX_KB));
-    const maxBytes = maxKB * 1024;
 
     const bytes = await file.arrayBuffer();
-    const originalSize = bytes.byteLength;
+    const buffer = Buffer.from(bytes);
 
-    // Process image with sharp
-    const sharp = (await import("sharp")).default;
+    // Compress image
+    const compressedBuffer = await compressImage(buffer, file.type);
 
-    let processedBuffer: Buffer;
+    // Determine final extension
+    const isPng = file.type === "image/png" && compressedBuffer.length <= MAX_SIZE;
+    const isWebp = file.type === "image/webp" && compressedBuffer.length <= MAX_SIZE;
+    const finalExt = isPng ? "png" : isWebp ? "webp" : "jpg";
 
-    // Read original image
-    const originalImage = sharp(Buffer.from(bytes));
+    const filename = generateFilename(finalExt);
+    const filepath = path.join(UPLOAD_DIR, filename);
 
-    // Get metadata
-    const metadata = await originalImage.metadata();
-    const width = metadata.width || 1200;
-    const height = metadata.height || 900;
+    await writeFile(filepath, compressedBuffer);
 
-    // Resize if too large (max 1600px on longest side)
-    let pipeline = sharp(Buffer.from(bytes));
-    if (width > 1600 || height > 1600) {
-      pipeline = pipeline.resize(1600, 1600, { fit: "inside", withoutEnlargement: true });
-    }
+    const originalSizeKB = (buffer.length / 1024).toFixed(1);
+    const compressedSizeKB = (compressedBuffer.length / 1024).toFixed(1);
+    const savedPercent = ((1 - compressedBuffer.length / buffer.length) * 100).toFixed(0);
 
-    // Try to compress to target size
-    // Start with quality 80 and reduce if needed
-    let quality = 80;
-    processedBuffer = await pipeline
-      .jpeg({ quality, mozjpeg: true })
-      .toBuffer();
-
-    // If still too large, reduce quality progressively
-    while (processedBuffer.length > maxBytes && quality > 20) {
-      quality -= 10;
-      pipeline = sharp(Buffer.from(bytes));
-      if (width > 1600 || height > 1600) {
-        pipeline = pipeline.resize(1600, 1600, { fit: "inside", withoutEnlargement: true });
-      }
-      processedBuffer = await pipeline
-        .jpeg({ quality, mozjpeg: true })
-        .toBuffer();
-    }
-
-    // If still too large, resize down more aggressively
-    if (processedBuffer.length > maxBytes) {
-      quality = 50;
-      pipeline = sharp(Buffer.from(bytes));
-      pipeline = pipeline.resize(1024, 1024, { fit: "inside", withoutEnlargement: true });
-      processedBuffer = await pipeline
-        .jpeg({ quality, mozjpeg: true })
-        .toBuffer();
-    }
-
-    const compressedSize = processedBuffer.length;
-
-    // Generate filename
-    const timestamp = Date.now();
-    const randomStr = Math.random().toString(36).substring(2, 8);
-    const ext = "jpg";
-    const filename = `${timestamp}-${randomStr}.${ext}`;
-
-    // Save to public/uploads directory
-    const uploadDir = join(process.cwd(), "public", "uploads");
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true });
-    }
-
-    const filepath = join(uploadDir, filename);
-    await writeFile(filepath, processedBuffer);
-
-    const url = `/uploads/${filename}`;
+    console.log(
+      `[Upload] ${filename} — ${originalSizeKB}KB → ${compressedSizeKB}KB (${savedPercent}% saved)`
+    );
 
     return NextResponse.json({
-      url,
-      originalSize,
-      compressedSize,
-      width: metadata.width,
-      height: metadata.height,
-      quality,
+      url: `/api/uploads/${filename}`,
+      filename,
+      originalSize: buffer.length,
+      compressedSize: compressedBuffer.length,
     });
   } catch (error) {
-    console.error("Upload error:", error);
-    return NextResponse.json({ error: "Terjadi kesalahan saat upload" }, { status: 500 });
+    console.error("[Upload Error]", error);
+    return NextResponse.json({ error: "Gagal mengupload gambar" }, { status: 500 });
   }
 }
