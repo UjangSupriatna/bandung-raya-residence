@@ -1140,7 +1140,7 @@ function GalleryPreviewSection() {
 
   useEffect(() => { fetchGalleryItems(); }, [fetchGalleryItems]);
 
-  const photos = galleryItems.filter((item) => !item.videoUrl && item.image);
+  const photos = galleryItems.filter((item) => !!item.image);
   const videos = galleryItems.filter((item) => !!item.videoUrl);
 
   const hasPhotos = photos.length > 0;
@@ -3160,7 +3160,7 @@ function ProyekGallery() {
   }
 
   // Separate items into foto and video
-  const photos = galleryItems.filter((item) => !item.videoUrl && item.image);
+  const photos = galleryItems.filter((item) => !!item.image);
   const videos = galleryItems.filter((item) => !!item.videoUrl);
 
   // Filter by category
