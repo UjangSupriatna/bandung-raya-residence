@@ -858,8 +858,8 @@ function PropertyPreviewSection({
         </FadeIn>
 
         {/* Search & Filter */}
-        <FadeIn delay={0.1} className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-10">
-          <div className="relative w-full sm:w-[280px]">
+        <FadeIn delay={0.1} className="space-y-4 mb-10">
+          <div className="relative w-full max-w-md mx-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
               type="text"
@@ -869,17 +869,25 @@ function PropertyPreviewSection({
               className="pl-9 h-10 text-sm border-gray-200 focus:ring-red-500 focus:border-red-500"
             />
           </div>
-          <Select value={activeCategory} onValueChange={(v) => setActiveCategory(v as PropertyCategory | "all")}>
-            <SelectTrigger className="w-full sm:w-[180px] h-10 text-xs font-semibold border-gray-200 focus:ring-red-500 focus:border-red-500">
-              <SelectValue placeholder="Semua Kategori" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Semua Kategori</SelectItem>
-              <SelectItem value="inden">Inden</SelectItem>
-              <SelectItem value="kavling">Kavling</SelectItem>
-              <SelectItem value="siap_huni">Siap Huni</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex flex-wrap justify-center gap-2">
+            {(["all", "inden", "kavling", "siap_huni"] as const).map((cat) => {
+              const isActive = activeCategory === cat;
+              const label = cat === "all" ? "Semua" : CATEGORY_LABELS[cat];
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
+                  className={`px-4 py-2 text-xs font-semibold rounded-full border transition-all ${
+                    isActive
+                      ? "bg-red-600 text-white border-red-600 shadow-md shadow-red-200"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-red-300 hover:text-red-600"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
         </FadeIn>
 
         {searchQuery.trim() && (
@@ -1784,9 +1792,9 @@ function PropertiesSection({
           </p>
         </FadeIn>
 
-        {/* Search & Filter Inputs */}
-        <FadeIn delay={0.1} className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6">
-          <div className="relative w-full sm:w-[280px]">
+        {/* Search & Filter */}
+        <FadeIn delay={0.1} className="space-y-4 mb-6">
+          <div className="relative w-full max-w-md mx-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
               type="text"
@@ -1796,27 +1804,42 @@ function PropertiesSection({
               className="pl-9 h-10 text-sm border-gray-200 focus:ring-red-500 focus:border-red-500"
             />
           </div>
-          <Select value={activeCategory} onValueChange={(v) => setActiveCategory(v as PropertyCategory | "all")}>
-            <SelectTrigger className="w-full sm:w-[160px] h-10 text-xs font-semibold border-gray-200 focus:ring-red-500 focus:border-red-500">
-              <SelectValue placeholder="Semua Kategori" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Semua Kategori</SelectItem>
-              <SelectItem value="inden">Inden</SelectItem>
-              <SelectItem value="kavling">Kavling</SelectItem>
-              <SelectItem value="siap_huni">Siap Huni</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={filter} onValueChange={(v) => setFilter(v as "semua" | "termurah" | "terlaris")}>
-            <SelectTrigger className="w-full sm:w-[160px] h-10 text-xs font-semibold border-gray-200 focus:ring-red-500 focus:border-red-500">
-              <SelectValue placeholder="Semua Harga" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="semua">Semua Harga</SelectItem>
-              <SelectItem value="termurah">Termurah</SelectItem>
-              <SelectItem value="terlaris">Terlaris</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex flex-wrap justify-center gap-2">
+            {(["all", "inden", "kavling", "siap_huni"] as const).map((cat) => {
+              const isActive = activeCategory === cat;
+              const label = cat === "all" ? "Semua" : CATEGORY_LABELS[cat];
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
+                  className={`px-4 py-2 text-xs font-semibold rounded-full border transition-all ${
+                    isActive
+                      ? "bg-red-600 text-white border-red-600 shadow-md shadow-red-200"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-red-300 hover:text-red-600"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+            <div className="w-px bg-gray-200 mx-1 hidden sm:block" />
+            {(["semua", "termurah", "terlaris"] as const).map((f) => {
+              const isActive = filter === f;
+              return (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`px-4 py-2 text-xs font-semibold rounded-full border transition-all ${
+                    isActive
+                      ? "bg-gray-900 text-white border-gray-900 shadow-md shadow-gray-200"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-gray-400 hover:text-gray-900"
+                  }`}
+                >
+                  {f === "semua" ? "Semua Harga" : f === "termurah" ? "Termurah" : "Terlaris"}
+                </button>
+              );
+            })}
+          </div>
         </FadeIn>
 
         {searchQuery.trim() && (
@@ -3727,7 +3750,11 @@ function TentangKamiPage() {
             {homeGalleryItems.map((img, i) => (
               <FadeIn key={img.id} delay={i * 0.05}>
                 <div className="aspect-[4/3] overflow-hidden rounded-xl shadow-md">
-                  <img src={img.image} alt={img.title} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+                  {img.image ? (
+                    <img src={img.image} alt={img.title} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-100"><Camera className="w-8 h-8 text-gray-300" /></div>
+                  )}
                 </div>
               </FadeIn>
             ))}
