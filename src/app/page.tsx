@@ -766,12 +766,16 @@ const PRICE_RANGES = [
 type PriceRangeKey = typeof PRICE_RANGES[number]["key"];
 
 function PropertyFilterPanel({
+  searchQuery,
+  setSearchQuery,
   selectedTypes,
   setSelectedTypes,
   selectedPrices,
   setSelectedPrices,
   totalResults,
 }: {
+  searchQuery: string;
+  setSearchQuery: (v: string) => void;
   selectedTypes: string[];
   setSelectedTypes: (v: string[]) => void;
   selectedPrices: string[];
@@ -791,16 +795,27 @@ function PropertyFilterPanel({
 
   return (
     <div className="mb-6">
-      {/* Toggle button */}
-      <button
-        onClick={() => setShowFilter(!showFilter)}
-        className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-xl border border-gray-200 transition-colors"
-      >
-        <Search className="w-4 h-4" />
-        {showFilter ? "Sembunyikan Filter" : "Tampilkan Filter"}
-        {hasFilter && <span className="text-xs bg-red-600 text-white px-1.5 py-0.5 rounded-full">{activeCount}</span>}
-        <ChevronDown className={`w-4 h-4 transition-transform ${showFilter ? "rotate-180" : ""}`} />
-      </button>
+      {/* Search bar + Filter toggle — 1 row */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Input
+            type="text"
+            placeholder="Cari nama proyek, tipe, lokasi..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 h-10 text-sm border-gray-200 bg-white focus:ring-red-500 focus:border-red-500"
+          />
+        </div>
+        <button
+          onClick={() => setShowFilter(!showFilter)}
+          className="flex items-center gap-2 px-4 h-10 text-sm font-semibold text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-xl border border-gray-200 transition-colors shrink-0"
+        >
+          {showFilter ? "Sembunyikan" : "Filter"}
+          {hasFilter && <span className="text-xs bg-red-600 text-white px-1.5 py-0.5 rounded-full">{activeCount}</span>}
+          <ChevronDown className={`w-4 h-4 transition-transform ${showFilter ? "rotate-180" : ""}`} />
+        </button>
+      </div>
 
       {/* Filter panel */}
       {showFilter && (
@@ -990,28 +1005,18 @@ function PropertyPreviewSection({
           </p>
         </FadeIn>
 
-        {/* Search bar — above filter */}
-        <FadeIn delay={0.1} className="mb-4">
-          <div className="relative w-full max-w-md mx-auto">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <Input
-              type="text"
-              placeholder="Cari nama proyek, tipe, lokasi..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-10 text-sm border-gray-200 bg-white focus:ring-red-500 focus:border-red-500"
-            />
-          </div>
+        {/* Search + Filter */}
+        <FadeIn delay={0.1}>
+          <PropertyFilterPanel
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            selectedTypes={selectedTypes}
+            setSelectedTypes={setSelectedTypes}
+            selectedPrices={selectedPrices}
+            setSelectedPrices={setSelectedPrices}
+            totalResults={filtered.length}
+          />
         </FadeIn>
-
-        {/* Filter panel */}
-        <PropertyFilterPanel
-          selectedTypes={selectedTypes}
-          setSelectedTypes={setSelectedTypes}
-          selectedPrices={selectedPrices}
-          setSelectedPrices={setSelectedPrices}
-          totalResults={filtered.length}
-        />
 
         {filtered.length === 0 ? (
           <div className="text-center py-12">
@@ -1899,27 +1904,18 @@ function PropertiesSection({
           </p>
         </FadeIn>
 
-        {/* Search bar — above filter */}
-        <FadeIn delay={0.1} className="mb-4">
-          <div className="relative w-full max-w-md mx-auto">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <Input
-              type="text"
-              placeholder="Cari nama proyek, tipe, lokasi..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-10 text-sm border-gray-200 bg-white focus:ring-red-500 focus:border-red-500"
-            />
-          </div>
+        {/* Search + Filter */}
+        <FadeIn delay={0.1}>
+          <PropertyFilterPanel
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            selectedTypes={selectedTypes}
+            setSelectedTypes={setSelectedTypes}
+            selectedPrices={selectedPrices}
+            setSelectedPrices={setSelectedPrices}
+            totalResults={filtered.length}
+          />
         </FadeIn>
-
-        <PropertyFilterPanel
-          selectedTypes={selectedTypes}
-          setSelectedTypes={setSelectedTypes}
-          selectedPrices={selectedPrices}
-          setSelectedPrices={setSelectedPrices}
-          totalResults={filtered.length}
-        />
 
         {filtered.length === 0 ? (
           <div className="text-center py-16">
