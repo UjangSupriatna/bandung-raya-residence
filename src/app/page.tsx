@@ -766,159 +766,114 @@ const PRICE_RANGES = [
 type PriceRangeKey = typeof PRICE_RANGES[number]["key"];
 
 function PropertyFilterPanel({
-  properties,
   selectedTypes,
   setSelectedTypes,
-  selectedLocations,
-  setSelectedLocations,
   selectedPrices,
   setSelectedPrices,
-  searchQuery,
-  setSearchQuery,
   totalResults,
 }: {
-  properties: Property[];
   selectedTypes: string[];
   setSelectedTypes: (v: string[]) => void;
-  selectedLocations: string[];
-  setSelectedLocations: (v: string[]) => void;
   selectedPrices: string[];
   setSelectedPrices: (v: string[]) => void;
-  searchQuery: string;
-  setSearchQuery: (v: string) => void;
   totalResults: number;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [showFilter, setShowFilter] = useState(false);
 
-  const allLocations = [...new Set(properties.map((p) => p.location).filter(Boolean))].sort();
-  const allTypes = [...new Set(properties.map((p) => p.category).filter(Boolean))].sort() as PropertyCategory[];
-  const activeCount = selectedTypes.length + selectedLocations.length + selectedPrices.length + (searchQuery.trim() ? 1 : 0);
+  const allTypes = ["inden", "kavling", "siap_huni"] as PropertyCategory[];
+  const activeCount = selectedTypes.length + selectedPrices.length;
   const hasFilter = activeCount > 0;
 
   function resetAll() {
     setSelectedTypes([]);
-    setSelectedLocations([]);
     setSelectedPrices([]);
-    setSearchQuery("");
   }
 
   return (
-    <div className="bg-gray-50 rounded-2xl border border-gray-200 p-4 sm:p-5 mb-8">
-      {/* Search bar */}
-      <div className="relative w-full mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <Input
-          type="text"
-          placeholder="Cari nama proyek, tipe, lokasi..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9 h-10 text-sm border-gray-200 bg-white focus:ring-red-500 focus:border-red-500"
-        />
-      </div>
-
-      {/* Mobile: collapsed with toggle / Desktop: always open */}
+    <div className="mb-6">
+      {/* Toggle button */}
       <button
-        onClick={() => setExpanded(!expanded)}
-        className="sm:hidden w-full flex items-center justify-between py-2 text-sm font-semibold text-gray-700"
+        onClick={() => setShowFilter(!showFilter)}
+        className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-xl border border-gray-200 transition-colors"
       >
-        <span>Filter {hasFilter && <span className="ml-1.5 text-xs bg-red-600 text-white px-1.5 py-0.5 rounded-full">{activeCount}</span>}</span>
-        <ChevronDown className={`w-4 h-4 transition-transform ${expanded ? "rotate-180" : ""}`} />
+        <Search className="w-4 h-4" />
+        {showFilter ? "Sembunyikan Filter" : "Tampilkan Filter"}
+        {hasFilter && <span className="text-xs bg-red-600 text-white px-1.5 py-0.5 rounded-full">{activeCount}</span>}
+        <ChevronDown className={`w-4 h-4 transition-transform ${showFilter ? "rotate-180" : ""}`} />
       </button>
 
-      <div className={`${expanded ? "block" : "hidden"} sm:block`}>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-3">
-          {/* Jenis Rumah */}
-          <div>
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Jenis Rumah</p>
-            <div className="space-y-1.5">
-              {allTypes.map((t) => {
-                const checked = selectedTypes.includes(t);
-                return (
-                  <label key={t} className="flex items-center gap-2.5 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() =>
-                        setSelectedTypes(checked ? selectedTypes.filter((x) => x !== t) : [...selectedTypes, t])
-                      }
-                      className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500 accent-red-600"
-                    />
-                    <span className={`text-sm transition-colors ${checked ? "text-red-700 font-medium" : "text-gray-600 group-hover:text-gray-900"}`}>
-                      {CATEGORY_LABELS[t] || t}
-                    </span>
-                  </label>
-                );
-              })}
+      {/* Filter panel */}
+      {showFilter && (
+        <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-5 mt-3 shadow-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {/* Jenis Rumah */}
+            <div>
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Jenis Rumah</p>
+              <div className="space-y-1.5">
+                {allTypes.map((t) => {
+                  const checked = selectedTypes.includes(t);
+                  return (
+                    <label key={t} className="flex items-center gap-2.5 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() =>
+                          setSelectedTypes(checked ? selectedTypes.filter((x) => x !== t) : [...selectedTypes, t])
+                        }
+                        className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500 accent-red-600"
+                      />
+                      <span className={`text-sm transition-colors ${checked ? "text-red-700 font-medium" : "text-gray-600 group-hover:text-gray-900"}`}>
+                        {CATEGORY_LABELS[t] || t}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Rentang Harga */}
+            <div>
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Rentang Harga</p>
+              <div className="space-y-1.5">
+                {PRICE_RANGES.map((r) => {
+                  const checked = selectedPrices.includes(r.key);
+                  return (
+                    <label key={r.key} className="flex items-center gap-2.5 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() =>
+                          setSelectedPrices(checked ? selectedPrices.filter((x) => x !== r.key) : [...selectedPrices, r.key])
+                        }
+                        className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500 accent-red-600"
+                      />
+                      <span className={`text-sm transition-colors ${checked ? "text-red-700 font-medium" : "text-gray-600 group-hover:text-gray-900"}`}>
+                        {r.label}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
-          {/* Lokasi */}
-          <div>
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Lokasi</p>
-            <div className="space-y-1.5">
-              {allLocations.map((loc) => {
-                const checked = selectedLocations.includes(loc);
-                return (
-                  <label key={loc} className="flex items-center gap-2.5 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() =>
-                        setSelectedLocations(checked ? selectedLocations.filter((x) => x !== loc) : [...selectedLocations, loc])
-                      }
-                      className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500 accent-red-600"
-                    />
-                    <span className={`text-sm transition-colors ${checked ? "text-red-700 font-medium" : "text-gray-600 group-hover:text-gray-900"}`}>
-                      {loc}
-                    </span>
-                  </label>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Rentang Harga */}
-          <div>
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Rentang Harga</p>
-            <div className="space-y-1.5">
-              {PRICE_RANGES.map((r) => {
-                const checked = selectedPrices.includes(r.key);
-                return (
-                  <label key={r.key} className="flex items-center gap-2.5 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() =>
-                        setSelectedPrices(checked ? selectedPrices.filter((x) => x !== r.key) : [...selectedPrices, r.key])
-                      }
-                      className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500 accent-red-600"
-                    />
-                    <span className={`text-sm transition-colors ${checked ? "text-red-700 font-medium" : "text-gray-600 group-hover:text-gray-900"}`}>
-                      {r.label}
-                    </span>
-                  </label>
-                );
-              })}
-            </div>
+          {/* Footer: result count + reset */}
+          <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
+            <p className="text-sm text-gray-500">
+              Menampilkan <span className="font-semibold text-gray-800">{totalResults}</span> proyek
+            </p>
+            {hasFilter && (
+              <button
+                onClick={resetAll}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-600 hover:text-red-700 transition-colors"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Reset Filter
+              </button>
+            )}
           </div>
         </div>
-
-        {/* Footer: result count + reset */}
-        <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-200">
-          <p className="text-sm text-gray-500">
-            Menampilkan <span className="font-semibold text-gray-800">{totalResults}</span> proyek
-          </p>
-          {hasFilter && (
-            <button
-              onClick={resetAll}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-600 hover:text-red-700 transition-colors"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              Reset Filter
-            </button>
-          )}
-        </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -994,13 +949,11 @@ function PropertyPreviewSection({
   const { properties: PROPERTIES } = usePropertyStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-  const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [selectedPrices, setSelectedPrices] = useState<string[]>([]);
   const router = useRouter();
 
   const filtered = PROPERTIES.filter((p) => {
     if (selectedTypes.length > 0 && !selectedTypes.includes(p.category)) return false;
-    if (selectedLocations.length > 0 && !selectedLocations.includes(p.location)) return false;
     if (selectedPrices.length > 0) {
       const match = selectedPrices.some((key) => {
         const range = PRICE_RANGES.find((r) => r.key === key);
@@ -1037,20 +990,28 @@ function PropertyPreviewSection({
           </p>
         </FadeIn>
 
-        <FadeIn delay={0.1}>
-          <PropertyFilterPanel
-            properties={PROPERTIES}
-            selectedTypes={selectedTypes}
-            setSelectedTypes={setSelectedTypes}
-            selectedLocations={selectedLocations}
-            setSelectedLocations={setSelectedLocations}
-            selectedPrices={selectedPrices}
-            setSelectedPrices={setSelectedPrices}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            totalResults={filtered.length}
-          />
+        {/* Search bar — above filter */}
+        <FadeIn delay={0.1} className="mb-4">
+          <div className="relative w-full max-w-md mx-auto">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Cari nama proyek, tipe, lokasi..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-10 text-sm border-gray-200 bg-white focus:ring-red-500 focus:border-red-500"
+            />
+          </div>
         </FadeIn>
+
+        {/* Filter panel */}
+        <PropertyFilterPanel
+          selectedTypes={selectedTypes}
+          setSelectedTypes={setSelectedTypes}
+          selectedPrices={selectedPrices}
+          setSelectedPrices={setSelectedPrices}
+          totalResults={filtered.length}
+        />
 
         {filtered.length === 0 ? (
           <div className="text-center py-12">
@@ -1883,10 +1844,9 @@ function PropertiesSection({
   const { properties: PROPERTIES } = usePropertyStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-  const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [selectedPrices, setSelectedPrices] = useState<string[]>([]);
   const [page, setPage] = useState(1);
-  const filterKey = `${selectedTypes.join()}-${selectedLocations.join()}-${selectedPrices.join()}-${searchQuery}`;
+  const filterKey = `${selectedTypes.join()}-${selectedPrices.join()}-${searchQuery}`;
   const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
 
   if (prevFilterKey !== filterKey) {
@@ -1896,7 +1856,6 @@ function PropertiesSection({
 
   const filtered = PROPERTIES.filter((p) => {
     if (selectedTypes.length > 0 && !selectedTypes.includes(p.category)) return false;
-    if (selectedLocations.length > 0 && !selectedLocations.includes(p.location)) return false;
     if (selectedPrices.length > 0) {
       const match = selectedPrices.some((key) => {
         const range = PRICE_RANGES.find((r) => r.key === key);
@@ -1940,20 +1899,27 @@ function PropertiesSection({
           </p>
         </FadeIn>
 
-        <FadeIn delay={0.1}>
-          <PropertyFilterPanel
-            properties={PROPERTIES}
-            selectedTypes={selectedTypes}
-            setSelectedTypes={setSelectedTypes}
-            selectedLocations={selectedLocations}
-            setSelectedLocations={setSelectedLocations}
-            selectedPrices={selectedPrices}
-            setSelectedPrices={setSelectedPrices}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            totalResults={filtered.length}
-          />
+        {/* Search bar — above filter */}
+        <FadeIn delay={0.1} className="mb-4">
+          <div className="relative w-full max-w-md mx-auto">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Cari nama proyek, tipe, lokasi..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-10 text-sm border-gray-200 bg-white focus:ring-red-500 focus:border-red-500"
+            />
+          </div>
         </FadeIn>
+
+        <PropertyFilterPanel
+          selectedTypes={selectedTypes}
+          setSelectedTypes={setSelectedTypes}
+          selectedPrices={selectedPrices}
+          setSelectedPrices={setSelectedPrices}
+          totalResults={filtered.length}
+        />
 
         {filtered.length === 0 ? (
           <div className="text-center py-16">
