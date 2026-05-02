@@ -71,6 +71,8 @@ import {
   Percent,
   Calendar,
   Eye,
+  Search,
+  RotateCcw,
 } from "lucide-react";
 import MapWrapper from "@/components/map-wrapper";
 import Chatbot from "@/components/chatbot";
@@ -822,11 +824,22 @@ function PropertyPreviewSection({
 }) {
   const { properties: PROPERTIES } = usePropertyStore();
   const [activeCategory, setActiveCategory] = useState<PropertyCategory | "all">("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
 
-  const filtered = activeCategory === "all"
-    ? PROPERTIES
-    : PROPERTIES.filter((p) => p.category === activeCategory);
+  const filtered = PROPERTIES.filter((p) => {
+    if (activeCategory !== "all" && p.category !== activeCategory) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      return (
+        p.name.toLowerCase().includes(q) ||
+        p.type.toLowerCase().includes(q) ||
+        (p.tag && p.tag.toLowerCase().includes(q)) ||
+        p.location.toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
 
   return (
     <section className="py-20 md:py-28 bg-white">
@@ -844,9 +857,20 @@ function PropertyPreviewSection({
           </p>
         </FadeIn>
 
-        <FadeIn delay={0.1} className="flex justify-center mb-10">
+        {/* Search & Filter */}
+        <FadeIn delay={0.1} className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-10">
+          <div className="relative w-full sm:w-[280px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Cari proyek, tipe, lokasi..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-10 text-sm border-gray-200 focus:ring-red-500 focus:border-red-500"
+            />
+          </div>
           <Select value={activeCategory} onValueChange={(v) => setActiveCategory(v as PropertyCategory | "all")}>
-            <SelectTrigger className="w-[180px] h-10 text-xs font-semibold border-gray-200 focus:ring-red-500 focus:border-red-500">
+            <SelectTrigger className="w-full sm:w-[180px] h-10 text-xs font-semibold border-gray-200 focus:ring-red-500 focus:border-red-500">
               <SelectValue placeholder="Semua Kategori" />
             </SelectTrigger>
             <SelectContent>
@@ -858,25 +882,48 @@ function PropertyPreviewSection({
           </Select>
         </FadeIn>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filtered.slice(0, 6).map((property) => (
-            <CompactPropertyCard
-              key={property.id}
-              property={property}
-              onSelect={onSelectProperty}
-            />
-          ))}
-        </div>
+        {searchQuery.trim() && (
+          <p className="text-center text-sm text-gray-400 mb-6">
+            Ditemukan <span className="font-semibold text-gray-600">{filtered.length}</span> proyek untuk &quot;{searchQuery}&quot;
+          </p>
+        )}
 
-        <FadeIn className="text-center mt-10">
-          <button
-            onClick={() => router.push("/?tab=proyek")}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-red-50 text-red-700 font-semibold rounded-xl hover:bg-red-100 transition-colors"
-          >
-            Lihat Semua Proyek
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </FadeIn>
+        {filtered.length === 0 ? (
+          <div className="text-center py-12">
+            <Search className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-400 mb-4">Tidak ada proyek yang cocok dengan pencarian Anda.</p>
+            <button
+              onClick={() => { setSearchQuery(""); setActiveCategory("all"); }}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Reset Filter
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filtered.slice(0, 6).map((property) => (
+                <CompactPropertyCard
+                  key={property.id}
+                  property={property}
+                  onSelect={onSelectProperty}
+                />
+              ))}
+            </div>
+            {filtered.length > 6 && (
+              <FadeIn className="text-center mt-10">
+                <button
+                  onClick={() => router.push("/?tab=proyek")}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-red-50 text-red-700 font-semibold rounded-xl hover:bg-red-100 transition-colors"
+                >
+                  Lihat Semua Proyek
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </FadeIn>
+            )}
+          </>
+        )}
       </div>
     </section>
   );
@@ -1681,11 +1728,12 @@ function PropertiesSection({
     "semua"
   );
   const [activeCategory, setActiveCategory] = useState<PropertyCategory | "all">("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
-  const [prevFilterKey, setPrevFilterKey] = useState(`${activeCategory}-${filter}`);
+  const [prevFilterKey, setPrevFilterKey] = useState(`${activeCategory}-${filter}-${searchQuery}`);
 
-  if (prevFilterKey !== `${activeCategory}-${filter}`) {
-    setPrevFilterKey(`${activeCategory}-${filter}`);
+  if (prevFilterKey !== `${activeCategory}-${filter}-${searchQuery}`) {
+    setPrevFilterKey(`${activeCategory}-${filter}-${searchQuery}`);
     setPage(1);
   }
 
@@ -1694,6 +1742,15 @@ function PropertiesSection({
     if (filter === "termurah") return p.price <= 250;
     if (filter === "terlaris")
       return ["Best Seller", "Populer", "Eksklusif"].includes(p.tag);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      return (
+        p.name.toLowerCase().includes(q) ||
+        p.type.toLowerCase().includes(q) ||
+        (p.tag && p.tag.toLowerCase().includes(q)) ||
+        p.location.toLowerCase().includes(q)
+      );
+    }
     return true;
   });
 
@@ -1727,10 +1784,20 @@ function PropertiesSection({
           </p>
         </FadeIn>
 
-        {/* Filter Inputs */}
-        <FadeIn delay={0.1} className="flex justify-center gap-3 mb-10">
+        {/* Search & Filter Inputs */}
+        <FadeIn delay={0.1} className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6">
+          <div className="relative w-full sm:w-[280px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Cari proyek, tipe, lokasi..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-10 text-sm border-gray-200 focus:ring-red-500 focus:border-red-500"
+            />
+          </div>
           <Select value={activeCategory} onValueChange={(v) => setActiveCategory(v as PropertyCategory | "all")}>
-            <SelectTrigger className="w-[160px] h-10 text-xs font-semibold border-gray-200 focus:ring-red-500 focus:border-red-500">
+            <SelectTrigger className="w-full sm:w-[160px] h-10 text-xs font-semibold border-gray-200 focus:ring-red-500 focus:border-red-500">
               <SelectValue placeholder="Semua Kategori" />
             </SelectTrigger>
             <SelectContent>
@@ -1741,7 +1808,7 @@ function PropertiesSection({
             </SelectContent>
           </Select>
           <Select value={filter} onValueChange={(v) => setFilter(v as "semua" | "termurah" | "terlaris")}>
-            <SelectTrigger className="w-[160px] h-10 text-xs font-semibold border-gray-200 focus:ring-red-500 focus:border-red-500">
+            <SelectTrigger className="w-full sm:w-[160px] h-10 text-xs font-semibold border-gray-200 focus:ring-red-500 focus:border-red-500">
               <SelectValue placeholder="Semua Harga" />
             </SelectTrigger>
             <SelectContent>
@@ -1752,18 +1819,39 @@ function PropertiesSection({
           </Select>
         </FadeIn>
 
-        {/* Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {paged.map((property) => (
-            <PropertyCard
-              key={property.id}
-              property={property}
-              onSelect={onSelectProperty}
-            />
-          ))}
-        </div>
+        {searchQuery.trim() && (
+          <p className="text-center text-sm text-gray-400 mb-6">
+            Ditemukan <span className="font-semibold text-gray-600">{filtered.length}</span> proyek untuk &quot;{searchQuery}&quot;
+          </p>
+        )}
 
-        <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+        {/* Grid */}
+        {filtered.length === 0 ? (
+          <div className="text-center py-16">
+            <Search className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-400 mb-4">Tidak ada proyek yang cocok dengan pencarian Anda.</p>
+            <button
+              onClick={() => { setSearchQuery(""); setActiveCategory("all"); setFilter("semua"); }}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Reset Filter
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {paged.map((property) => (
+                <PropertyCard
+                  key={property.id}
+                  property={property}
+                  onSelect={onSelectProperty}
+                />
+              ))}
+            </div>
+            <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+          </>
+        )}
       </div>
     </section>
   );
