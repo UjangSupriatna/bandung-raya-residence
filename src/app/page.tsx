@@ -754,6 +754,175 @@ function getCheapestKprInstallment(property: Property): { amount: number; dp: nu
   return best;
 }
 
+/* ─────────────────────────── CHECKBOX FILTER COMPONENT ─────────────────────────── */
+
+const PRICE_RANGES = [
+  { key: "<200", label: "< Rp 200 Jt", min: 0, max: 200 },
+  { key: "200-500", label: "Rp 200 - 500 Jt", min: 200, max: 500 },
+  { key: "500-1m", label: "Rp 500 Jt - 1 M", min: 500, max: 1000 },
+  { key: ">1m", label: "> Rp 1 M", min: 1000, max: Infinity },
+] as const;
+
+type PriceRangeKey = typeof PRICE_RANGES[number]["key"];
+
+function PropertyFilterPanel({
+  properties,
+  selectedTypes,
+  setSelectedTypes,
+  selectedLocations,
+  setSelectedLocations,
+  selectedPrices,
+  setSelectedPrices,
+  searchQuery,
+  setSearchQuery,
+  totalResults,
+}: {
+  properties: Property[];
+  selectedTypes: string[];
+  setSelectedTypes: (v: string[]) => void;
+  selectedLocations: string[];
+  setSelectedLocations: (v: string[]) => void;
+  selectedPrices: string[];
+  setSelectedPrices: (v: string[]) => void;
+  searchQuery: string;
+  setSearchQuery: (v: string) => void;
+  totalResults: number;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  const allLocations = [...new Set(properties.map((p) => p.location).filter(Boolean))].sort();
+  const allTypes = [...new Set(properties.map((p) => p.category).filter(Boolean))].sort() as PropertyCategory[];
+  const activeCount = selectedTypes.length + selectedLocations.length + selectedPrices.length + (searchQuery.trim() ? 1 : 0);
+  const hasFilter = activeCount > 0;
+
+  function resetAll() {
+    setSelectedTypes([]);
+    setSelectedLocations([]);
+    setSelectedPrices([]);
+    setSearchQuery("");
+  }
+
+  return (
+    <div className="bg-gray-50 rounded-2xl border border-gray-200 p-4 sm:p-5 mb-8">
+      {/* Search bar */}
+      <div className="relative w-full mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <Input
+          type="text"
+          placeholder="Cari nama proyek, tipe, lokasi..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9 h-10 text-sm border-gray-200 bg-white focus:ring-red-500 focus:border-red-500"
+        />
+      </div>
+
+      {/* Mobile: collapsed with toggle / Desktop: always open */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="sm:hidden w-full flex items-center justify-between py-2 text-sm font-semibold text-gray-700"
+      >
+        <span>Filter {hasFilter && <span className="ml-1.5 text-xs bg-red-600 text-white px-1.5 py-0.5 rounded-full">{activeCount}</span>}</span>
+        <ChevronDown className={`w-4 h-4 transition-transform ${expanded ? "rotate-180" : ""}`} />
+      </button>
+
+      <div className={`${expanded ? "block" : "hidden"} sm:block`}>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-3">
+          {/* Jenis Rumah */}
+          <div>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Jenis Rumah</p>
+            <div className="space-y-1.5">
+              {allTypes.map((t) => {
+                const checked = selectedTypes.includes(t);
+                return (
+                  <label key={t} className="flex items-center gap-2.5 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() =>
+                        setSelectedTypes(checked ? selectedTypes.filter((x) => x !== t) : [...selectedTypes, t])
+                      }
+                      className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500 accent-red-600"
+                    />
+                    <span className={`text-sm transition-colors ${checked ? "text-red-700 font-medium" : "text-gray-600 group-hover:text-gray-900"}`}>
+                      {CATEGORY_LABELS[t] || t}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Lokasi */}
+          <div>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Lokasi</p>
+            <div className="space-y-1.5">
+              {allLocations.map((loc) => {
+                const checked = selectedLocations.includes(loc);
+                return (
+                  <label key={loc} className="flex items-center gap-2.5 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() =>
+                        setSelectedLocations(checked ? selectedLocations.filter((x) => x !== loc) : [...selectedLocations, loc])
+                      }
+                      className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500 accent-red-600"
+                    />
+                    <span className={`text-sm transition-colors ${checked ? "text-red-700 font-medium" : "text-gray-600 group-hover:text-gray-900"}`}>
+                      {loc}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Rentang Harga */}
+          <div>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Rentang Harga</p>
+            <div className="space-y-1.5">
+              {PRICE_RANGES.map((r) => {
+                const checked = selectedPrices.includes(r.key);
+                return (
+                  <label key={r.key} className="flex items-center gap-2.5 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() =>
+                        setSelectedPrices(checked ? selectedPrices.filter((x) => x !== r.key) : [...selectedPrices, r.key])
+                      }
+                      className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500 accent-red-600"
+                    />
+                    <span className={`text-sm transition-colors ${checked ? "text-red-700 font-medium" : "text-gray-600 group-hover:text-gray-900"}`}>
+                      {r.label}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer: result count + reset */}
+        <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-200">
+          <p className="text-sm text-gray-500">
+            Menampilkan <span className="font-semibold text-gray-800">{totalResults}</span> proyek
+          </p>
+          {hasFilter && (
+            <button
+              onClick={resetAll}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-600 hover:text-red-700 transition-colors"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Reset Filter
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─────────────────────────── PROPERTY PREVIEW (Home) ─────────────────────────── */
 
 function CompactPropertyCard({
@@ -823,12 +992,23 @@ function PropertyPreviewSection({
   onSelectProperty: (p: Property) => void;
 }) {
   const { properties: PROPERTIES } = usePropertyStore();
-  const [activeCategory, setActiveCategory] = useState<PropertyCategory | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
+  const [selectedPrices, setSelectedPrices] = useState<string[]>([]);
   const router = useRouter();
 
   const filtered = PROPERTIES.filter((p) => {
-    if (activeCategory !== "all" && p.category !== activeCategory) return false;
+    if (selectedTypes.length > 0 && !selectedTypes.includes(p.category)) return false;
+    if (selectedLocations.length > 0 && !selectedLocations.includes(p.location)) return false;
+    if (selectedPrices.length > 0) {
+      const match = selectedPrices.some((key) => {
+        const range = PRICE_RANGES.find((r) => r.key === key);
+        if (!range) return false;
+        return p.price >= range.min && p.price <= range.max;
+      });
+      if (!match) return false;
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       return (
@@ -857,56 +1037,25 @@ function PropertyPreviewSection({
           </p>
         </FadeIn>
 
-        {/* Search & Filter */}
-        <FadeIn delay={0.1} className="space-y-4 mb-10">
-          <div className="relative w-full max-w-md mx-auto">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <Input
-              type="text"
-              placeholder="Cari proyek, tipe, lokasi..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-10 text-sm border-gray-200 focus:ring-red-500 focus:border-red-500"
-            />
-          </div>
-          <div className="flex flex-wrap justify-center gap-2">
-            {(["all", "inden", "kavling", "siap_huni"] as const).map((cat) => {
-              const isActive = activeCategory === cat;
-              const label = cat === "all" ? "Semua" : CATEGORY_LABELS[cat];
-              return (
-                <button
-                  key={cat}
-                  onClick={() => setActiveCategory(cat)}
-                  className={`px-4 py-2 text-xs font-semibold rounded-full border transition-all ${
-                    isActive
-                      ? "bg-red-600 text-white border-red-600 shadow-md shadow-red-200"
-                      : "bg-white text-gray-600 border-gray-200 hover:border-red-300 hover:text-red-600"
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
+        <FadeIn delay={0.1}>
+          <PropertyFilterPanel
+            properties={PROPERTIES}
+            selectedTypes={selectedTypes}
+            setSelectedTypes={setSelectedTypes}
+            selectedLocations={selectedLocations}
+            setSelectedLocations={setSelectedLocations}
+            selectedPrices={selectedPrices}
+            setSelectedPrices={setSelectedPrices}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            totalResults={filtered.length}
+          />
         </FadeIn>
-
-        {searchQuery.trim() && (
-          <p className="text-center text-sm text-gray-400 mb-6">
-            Ditemukan <span className="font-semibold text-gray-600">{filtered.length}</span> proyek untuk &quot;{searchQuery}&quot;
-          </p>
-        )}
 
         {filtered.length === 0 ? (
           <div className="text-center py-12">
             <Search className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-400 mb-4">Tidak ada proyek yang cocok dengan pencarian Anda.</p>
-            <button
-              onClick={() => { setSearchQuery(""); setActiveCategory("all"); }}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
-            >
-              <RotateCcw className="w-4 h-4" />
-              Reset Filter
-            </button>
+            <p className="text-gray-400 mb-4">Tidak ada proyek yang cocok dengan filter Anda.</p>
           </div>
         ) : (
           <>
@@ -1732,24 +1881,30 @@ function PropertiesSection({
   onSelectProperty: (p: Property) => void;
 }) {
   const { properties: PROPERTIES } = usePropertyStore();
-  const [filter, setFilter] = useState<"semua" | "termurah" | "terlaris">(
-    "semua"
-  );
-  const [activeCategory, setActiveCategory] = useState<PropertyCategory | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
+  const [selectedPrices, setSelectedPrices] = useState<string[]>([]);
   const [page, setPage] = useState(1);
-  const [prevFilterKey, setPrevFilterKey] = useState(`${activeCategory}-${filter}-${searchQuery}`);
+  const filterKey = `${selectedTypes.join()}-${selectedLocations.join()}-${selectedPrices.join()}-${searchQuery}`;
+  const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
 
-  if (prevFilterKey !== `${activeCategory}-${filter}-${searchQuery}`) {
-    setPrevFilterKey(`${activeCategory}-${filter}-${searchQuery}`);
+  if (prevFilterKey !== filterKey) {
+    setPrevFilterKey(filterKey);
     setPage(1);
   }
 
   const filtered = PROPERTIES.filter((p) => {
-    if (activeCategory !== "all" && p.category !== activeCategory) return false;
-    if (filter === "termurah") return p.price <= 250;
-    if (filter === "terlaris")
-      return ["Best Seller", "Populer", "Eksklusif"].includes(p.tag);
+    if (selectedTypes.length > 0 && !selectedTypes.includes(p.category)) return false;
+    if (selectedLocations.length > 0 && !selectedLocations.includes(p.location)) return false;
+    if (selectedPrices.length > 0) {
+      const match = selectedPrices.some((key) => {
+        const range = PRICE_RANGES.find((r) => r.key === key);
+        if (!range) return false;
+        return p.price >= range.min && p.price <= range.max;
+      });
+      if (!match) return false;
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       return (
@@ -1764,13 +1919,6 @@ function PropertiesSection({
 
   const totalPages = Math.ceil(filtered.length / PROYEK_PER_PAGE);
   const paged = filtered.slice((page - 1) * PROYEK_PER_PAGE, page * PROYEK_PER_PAGE);
-
-  const categories: { key: PropertyCategory | "all"; label: string; icon: typeof Hammer }[] = [
-    { key: "all", label: "Semua", icon: Home },
-    { key: "inden", label: "Inden", icon: Hammer },
-    { key: "kavling", label: "Kavling", icon: LandPlot },
-    { key: "siap_huni", label: "Siap Huni", icon: KeyRound },
-  ];
 
   return (
     <section className="py-20 md:py-28 bg-warm-bg">
@@ -1792,74 +1940,25 @@ function PropertiesSection({
           </p>
         </FadeIn>
 
-        {/* Search & Filter */}
-        <FadeIn delay={0.1} className="space-y-4 mb-6">
-          <div className="relative w-full max-w-md mx-auto">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <Input
-              type="text"
-              placeholder="Cari proyek, tipe, lokasi..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-10 text-sm border-gray-200 focus:ring-red-500 focus:border-red-500"
-            />
-          </div>
-          <div className="flex flex-wrap justify-center gap-2">
-            {(["all", "inden", "kavling", "siap_huni"] as const).map((cat) => {
-              const isActive = activeCategory === cat;
-              const label = cat === "all" ? "Semua" : CATEGORY_LABELS[cat];
-              return (
-                <button
-                  key={cat}
-                  onClick={() => setActiveCategory(cat)}
-                  className={`px-4 py-2 text-xs font-semibold rounded-full border transition-all ${
-                    isActive
-                      ? "bg-red-600 text-white border-red-600 shadow-md shadow-red-200"
-                      : "bg-white text-gray-600 border-gray-200 hover:border-red-300 hover:text-red-600"
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-            <div className="w-px bg-gray-200 mx-1 hidden sm:block" />
-            {(["semua", "termurah", "terlaris"] as const).map((f) => {
-              const isActive = filter === f;
-              return (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  className={`px-4 py-2 text-xs font-semibold rounded-full border transition-all ${
-                    isActive
-                      ? "bg-gray-900 text-white border-gray-900 shadow-md shadow-gray-200"
-                      : "bg-white text-gray-600 border-gray-200 hover:border-gray-400 hover:text-gray-900"
-                  }`}
-                >
-                  {f === "semua" ? "Semua Harga" : f === "termurah" ? "Termurah" : "Terlaris"}
-                </button>
-              );
-            })}
-          </div>
+        <FadeIn delay={0.1}>
+          <PropertyFilterPanel
+            properties={PROPERTIES}
+            selectedTypes={selectedTypes}
+            setSelectedTypes={setSelectedTypes}
+            selectedLocations={selectedLocations}
+            setSelectedLocations={setSelectedLocations}
+            selectedPrices={selectedPrices}
+            setSelectedPrices={setSelectedPrices}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            totalResults={filtered.length}
+          />
         </FadeIn>
 
-        {searchQuery.trim() && (
-          <p className="text-center text-sm text-gray-400 mb-6">
-            Ditemukan <span className="font-semibold text-gray-600">{filtered.length}</span> proyek untuk &quot;{searchQuery}&quot;
-          </p>
-        )}
-
-        {/* Grid */}
         {filtered.length === 0 ? (
           <div className="text-center py-16">
             <Search className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-400 mb-4">Tidak ada proyek yang cocok dengan pencarian Anda.</p>
-            <button
-              onClick={() => { setSearchQuery(""); setActiveCategory("all"); setFilter("semua"); }}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
-            >
-              <RotateCcw className="w-4 h-4" />
-              Reset Filter
-            </button>
+            <p className="text-gray-400">Tidak ada proyek yang cocok dengan filter Anda.</p>
           </div>
         ) : (
           <>
