@@ -794,7 +794,7 @@ function PropertyFilterPanel({
       {/* Toggle button */}
       <button
         onClick={() => setShowFilter(!showFilter)}
-        className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-xl border border-gray-200 transition-colors"
+        className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-xl border border-gray-200 transition-colors"
       >
         <Search className="w-4 h-4" />
         {showFilter ? "Sembunyikan Filter" : "Tampilkan Filter"}
